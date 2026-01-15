@@ -4,6 +4,8 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../widgets/custom_icon_widget.dart';
+import '../../services/incident_management_service.dart';
+import '../../services/offline_queue_service.dart';
 import './widgets/anonymous_toggle_widget.dart';
 import './widgets/contact_info_widget.dart';
 import './widgets/datetime_selector_widget.dart';
@@ -26,6 +28,8 @@ class _IncidentReportingState extends State<IncidentReporting> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _incidentService = IncidentManagementService();
+  final _offlineQueue = OfflineQueueService();
 
   String? _selectedIncidentType;
   DateTime _selectedDateTime = DateTime.now();
@@ -37,12 +41,38 @@ class _IncidentReportingState extends State<IncidentReporting> {
   bool _isSubmitting = false;
   String? _descriptionError;
   String? _phoneError;
+  bool _isOnline = true;
+  Map<String, int> _queueStats = {};
 
   @override
   void initState() {
     super.initState();
     _loadCurrentLocation();
     _loadDraft();
+    _initializeOfflineQueue();
+    _listenToQueueStatus();
+  }
+
+  Future<void> _initializeOfflineQueue() async {
+    await _offlineQueue.initialize();
+    final online = await _offlineQueue.isOnline();
+    final stats = await _offlineQueue.getQueueStats();
+    if (mounted) {
+      setState(() {
+        _isOnline = online;
+        _queueStats = stats;
+      });
+    }
+  }
+
+  void _listenToQueueStatus() {
+    _offlineQueue.queueStatusStream.listen((data) {
+      if (mounted) {
+        setState(() {
+          _queueStats = data['stats'] as Map<String, int>;
+        });
+      }
+    });
   }
 
   Future<void> _loadCurrentLocation() async {
@@ -101,17 +131,31 @@ class _IncidentReportingState extends State<IncidentReporting> {
     setState(() => _isSubmitting = true);
 
     try {
-      await Future.delayed(Duration(seconds: 2));
+      final result = await _incidentService.createIncident(
+        title: '${_selectedIncidentType ?? 'Incidente'} - $_locationText',
+        description: _descriptionController.text.trim(),
+        incidentType: _selectedIncidentType ?? 'general',
+        severity: _getSeverityString(_severity),
+        locationLat: 19.432608,
+        locationLng: -99.133209,
+        locationAddress: _locationText,
+        occurredAt: _selectedDateTime,
+        isAnonymous: _isAnonymous,
+        mediaUrls: _attachedMedia.map((file) => file.path).toList(),
+      );
 
       if (mounted) {
-        final reportId = 'INC-${DateTime.now().millisecondsSinceEpoch}';
-        _showSuccessDialog(reportId);
+        final reportId = result['id'] as String;
+        final isQueued = result['is_queued'] == true;
+        _showSuccessDialog(reportId, isQueued: isQueued);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al enviar el reporte. Intenta nuevamente.'),
+            content: Text(
+              'Error al enviar el reporte. Se guardó para enviar después.',
+            ),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -123,7 +167,14 @@ class _IncidentReportingState extends State<IncidentReporting> {
     }
   }
 
-  void _showSuccessDialog(String reportId) {
+  String _getSeverityString(int value) {
+    if (value <= 2) return 'low';
+    if (value <= 3) return 'medium';
+    if (value <= 4) return 'high';
+    return 'critical';
+  }
+
+  void _showSuccessDialog(String reportId, {bool isQueued = false}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -133,12 +184,12 @@ class _IncidentReportingState extends State<IncidentReporting> {
           title: Row(
             children: [
               CustomIconWidget(
-                iconName: 'check_circle',
-                color: Color(0xFF4CAF50),
+                iconName: isQueued ? 'schedule' : 'check_circle',
+                color: isQueued ? Color(0xFFFF9800) : Color(0xFF4CAF50),
                 size: 28,
               ),
               SizedBox(width: 2.w),
-              Text('Reporte Enviado'),
+              Text(isQueued ? 'Reporte en Cola' : 'Reporte Enviado'),
             ],
           ),
           content: Column(
@@ -146,7 +197,9 @@ class _IncidentReportingState extends State<IncidentReporting> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Tu reporte ha sido enviado exitosamente.',
+                isQueued
+                    ? 'Tu reporte se guardó y se enviará automáticamente cuando recuperes la conexión.'
+                    : 'Tu reporte ha sido enviado exitosamente.',
                 style: theme.textTheme.bodyMedium,
               ),
               SizedBox(height: 2.h),
@@ -175,23 +228,25 @@ class _IncidentReportingState extends State<IncidentReporting> {
                   ],
                 ),
               ),
-              SizedBox(height: 2.h),
-              Row(
-                children: [
-                  CustomIconWidget(
-                    iconName: 'schedule',
-                    color: theme.colorScheme.primary,
-                    size: 20,
-                  ),
-                  SizedBox(width: 2.w),
-                  Expanded(
-                    child: Text(
-                      'Tiempo estimado de respuesta: 15-30 minutos',
-                      style: theme.textTheme.bodySmall,
+              if (!isQueued) ...[
+                SizedBox(height: 2.h),
+                Row(
+                  children: [
+                    CustomIconWidget(
+                      iconName: 'schedule',
+                      color: theme.colorScheme.primary,
+                      size: 20,
                     ),
-                  ),
-                ],
-              ),
+                    SizedBox(width: 2.w),
+                    Expanded(
+                      child: Text(
+                        'Tiempo estimado de respuesta: 15-30 minutos',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
           actions: [
@@ -228,6 +283,8 @@ class _IncidentReportingState extends State<IncidentReporting> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final pendingCount = _queueStats['pending'] ?? 0;
+    final failedCount = _queueStats['failed'] ?? 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -246,6 +303,53 @@ class _IncidentReportingState extends State<IncidentReporting> {
         ),
         title: Text('Reportar Incidente'),
         actions: [
+          if (!_isOnline)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 2.w),
+              child: Row(
+                children: [
+                  CustomIconWidget(
+                    iconName: 'cloud_off',
+                    color: theme.colorScheme.error,
+                    size: 20,
+                  ),
+                  SizedBox(width: 1.w),
+                  Text(
+                    'Sin conexión',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (pendingCount > 0 || failedCount > 0)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 2.w),
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 2.w,
+                    vertical: 0.5.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: failedCount > 0
+                        ? theme.colorScheme.errorContainer
+                        : theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${pendingCount + failedCount} en cola',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: failedCount > 0
+                          ? theme.colorScheme.onErrorContainer
+                          : theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (_isSubmitting)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 4.w),

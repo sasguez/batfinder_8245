@@ -196,7 +196,8 @@ class ResponseTimeMonitoringService {
           .eq('incident_id', incidentId)
           .order('created_at', ascending: false);
 
-      return (response as List)
+      final data = response as List;
+      return data
           .map((json) => ResponseTimeAlert.fromJson(json))
           .toList();
     } catch (error) {

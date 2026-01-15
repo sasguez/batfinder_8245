@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../widgets/custom_icon_widget.dart';
 
 /// Splash Screen for BatFinder Colombian Safety Application
 /// Provides branded launch experience while initializing security services
@@ -98,17 +97,17 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.of(
         context,
         rootNavigator: true,
-      ).pushReplacementNamed('/alert-dashboard');
+      ).pushReplacementNamed(AppRoutes.alertDashboard);
     } else if (isNewUser) {
       Navigator.of(
         context,
         rootNavigator: true,
-      ).pushReplacementNamed('/onboarding-flow');
+      ).pushReplacementNamed(AppRoutes.onboarding);
     } else {
       Navigator.of(
         context,
         rootNavigator: true,
-      ).pushReplacementNamed('/login-screen');
+      ).pushReplacementNamed(AppRoutes.login);
     }
   }
 
@@ -163,11 +162,11 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                       ],
                     ),
-                    child: Center(
-                      child: CustomIconWidget(
-                        iconName: 'security',
-                        color: theme.colorScheme.primary,
-                        size: 25.w,
+                    child: Padding(
+                      padding: EdgeInsets.all(8.w),
+                      child: CustomImageWidget(
+                        imageUrl: 'assets/images/batfinder-1768513763769.png',
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),

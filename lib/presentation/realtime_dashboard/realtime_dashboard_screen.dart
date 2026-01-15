@@ -23,6 +23,7 @@ class _RealtimeDashboardScreenState extends State<RealtimeDashboardScreen> {
   DashboardStatistics? _currentStats;
   List<GeographicHotspot> _hotspots = [];
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -31,35 +32,51 @@ class _RealtimeDashboardScreenState extends State<RealtimeDashboardScreen> {
   }
 
   Future<void> _initializeDashboard() async {
-    _dashboardService.subscribeToStatistics();
-    _dashboardService.subscribeToIncidents();
-
-    _dashboardService.statisticsStream.listen((stats) {
-      if (mounted) {
-        setState(() {
-          _currentStats = stats;
-          _isLoading = false;
-        });
-      }
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
     });
 
-    _dashboardService.hotspotsStream.listen((hotspots) {
-      if (mounted) {
-        setState(() {
-          _hotspots = hotspots;
-        });
-      }
-    });
+    try {
+      _dashboardService.subscribeToStatistics();
+      _dashboardService.subscribeToIncidents();
 
-    final initialStats = await _dashboardService.fetchTodayStatistics();
-    final initialHotspots = await _dashboardService.fetchGeographicHotspots();
-
-    if (mounted) {
-      setState(() {
-        _currentStats = initialStats;
-        _hotspots = initialHotspots;
-        _isLoading = false;
+      _dashboardService.statisticsStream.listen((stats) {
+        if (mounted) {
+          setState(() {
+            _currentStats = stats;
+            _isLoading = false;
+            _errorMessage = null;
+          });
+        }
       });
+
+      _dashboardService.hotspotsStream.listen((hotspots) {
+        if (mounted) {
+          setState(() {
+            _hotspots = hotspots;
+          });
+        }
+      });
+
+      final initialStats = await _dashboardService.fetchTodayStatistics();
+      final initialHotspots = await _dashboardService.fetchGeographicHotspots();
+
+      if (mounted) {
+        setState(() {
+          _currentStats = initialStats;
+          _hotspots = initialHotspots;
+          _isLoading = false;
+          _errorMessage = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Error al cargar datos: $e';
+        });
+      }
     }
   }
 
@@ -116,6 +133,11 @@ class _RealtimeDashboardScreenState extends State<RealtimeDashboardScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? _buildErrorState()
+          : _currentStats == null ||
+                (_currentStats!.totalIncidents == 0 && _hotspots.isEmpty)
+          ? _buildEmptyState()
           : RefreshIndicator(
               onRefresh: _refreshDashboard,
               child: SingleChildScrollView(
@@ -146,15 +168,22 @@ class _RealtimeDashboardScreenState extends State<RealtimeDashboardScreen> {
                     SizedBox(height: 2.h),
                     Row(
                       children: [
-                        Expanded(child: ResponseTimeChartWidget(
-                          averageResponseTime: _currentStats?.averageResponseTime ?? 0,
-                        )),
+                        Expanded(
+                          child: ResponseTimeChartWidget(
+                            averageResponseTime:
+                                _currentStats?.averageResponseTime ?? 0,
+                          ),
+                        ),
                         SizedBox(width: 3.w),
-                        Expanded(child: ResolutionRateWidget(
-                          resolutionRate: _currentStats?.resolutionRate ?? 0.0,
-                          totalIncidents: _currentStats?.totalIncidents ?? 0,
-                          resolvedIncidents: _currentStats?.resolvedIncidents ?? 0,
-                        )),
+                        Expanded(
+                          child: ResolutionRateWidget(
+                            resolutionRate:
+                                _currentStats?.resolutionRate ?? 0.0,
+                            totalIncidents: _currentStats?.totalIncidents ?? 0,
+                            resolvedIncidents:
+                                _currentStats?.resolvedIncidents ?? 0,
+                          ),
+                        ),
                       ],
                     ),
                     SizedBox(height: 3.h),
@@ -178,6 +207,90 @@ class _RealtimeDashboardScreenState extends State<RealtimeDashboardScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(5.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.analytics_outlined,
+              size: 80.sp,
+              color: Colors.grey.shade400,
+            ),
+            SizedBox(height: 3.h),
+            Text(
+              'No hay datos disponibles',
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              'Los reportes aparecerán aquí cuando se registren nuevos incidentes',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+            ),
+            SizedBox(height: 3.h),
+            ElevatedButton.icon(
+              onPressed: _refreshDashboard,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Actualizar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A73E8),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(5.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 80.sp, color: Colors.red.shade400),
+            SizedBox(height: 3.h),
+            Text(
+              'Error al cargar datos',
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.red.shade700,
+              ),
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              _errorMessage ?? 'Ocurrió un error inesperado',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+            ),
+            SizedBox(height: 3.h),
+            ElevatedButton.icon(
+              onPressed: _refreshDashboard,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1A73E8),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
