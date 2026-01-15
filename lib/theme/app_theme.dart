@@ -1,105 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// A class that contains all theme configurations for the Colombian Safety application.
-/// Implements Civic Minimalism design with Colombian Safety Palette for emergency contexts.
+/// Una clase que contiene todas las configuraciones de tema para la aplicación BatFinder.
+/// Implementa diseño Minimalismo Cívico con Paleta Moderna Azul/Púrpura.
 class AppTheme {
   AppTheme._();
 
-  // Colombian Safety Palette - Color Specifications
+  // Paleta Moderna Azul/Púrpura - Especificaciones de Color
   static const Color primaryLight = Color(
-    0xFFC41E3A,
-  ); // Colombian red for emergency actions
+    0xFF6366F1,
+  ); // Índigo vibrante para acciones principales
   static const Color primaryVariantLight = Color(
-    0xFFB01830,
-  ); // Darker red variant
+    0xFF4F46E5,
+  ); // Variante índigo más oscuro
   static const Color secondaryLight = Color(
-    0xFF1B365D,
-  ); // Deep navy for authority
+    0xFF8B5CF6,
+  ); // Púrpura para elementos secundarios
   static const Color secondaryVariantLight = Color(
-    0xFF0F2340,
-  ); // Darker navy variant
+    0xFF7C3AED,
+  ); // Variante púrpura más oscura
   static const Color successLight = Color(
-    0xFF2E7D32,
-  ); // Forest green for safe zones
+    0xFF10B981,
+  ); // Verde esmeralda para estados exitosos
   static const Color warningLight = Color(
-    0xFFF57C00,
-  ); // Amber for moderate alerts
+    0xFFF59E0B,
+  ); // Ámbar para alertas moderadas
   static const Color errorLight = Color(
-    0xFFD32F2F,
-  ); // Clear red for system errors
-  static const Color accentLight = Color(
-    0xFFFFD700,
-  ); // Colombian yellow for highlights
+    0xFFEF4444,
+  ); // Rojo para errores del sistema
+  static const Color accentLight = Color(0xFFF472B6); // Rosa para destacados
   static const Color backgroundLight = Color(
     0xFFFFFFFF,
-  ); // Pure white for main backgrounds
+  ); // Blanco puro para fondos principales
   static const Color surfaceLight = Color(
-    0xFFFAFAFA,
-  ); // Warm off-white for cards
+    0xFFF9FAFB,
+  ); // Blanco cálido para tarjetas
   static const Color onPrimaryLight = Color(0xFFFFFFFF);
   static const Color onSecondaryLight = Color(0xFFFFFFFF);
   static const Color onBackgroundLight = Color(
-    0xFF212121,
-  ); // Near-black for primary content
-  static const Color onSurfaceLight = Color(0xFF212121);
+    0xFF1F2937,
+  ); // Casi negro para contenido primario
+  static const Color onSurfaceLight = Color(0xFF1F2937);
   static const Color onErrorLight = Color(0xFFFFFFFF);
 
-  // Dark theme colors (adapted for night-time emergency use)
+  // Colores de tema oscuro (adaptado para uso nocturno)
   static const Color primaryDark = Color(
-    0xFFE53E56,
-  ); // Lighter red for dark mode visibility
-  static const Color primaryVariantDark = Color(0xFFC41E3A);
+    0xFF818CF8,
+  ); // Índigo más claro para modo oscuro
+  static const Color primaryVariantDark = Color(0xFF6366F1);
   static const Color secondaryDark = Color(
-    0xFF4A6FA5,
-  ); // Lighter navy for dark mode
-  static const Color secondaryVariantDark = Color(0xFF1B365D);
+    0xFFA78BFA,
+  ); // Púrpura más claro para modo oscuro
+  static const Color secondaryVariantDark = Color(0xFF8B5CF6);
   static const Color successDark = Color(
-    0xFF4CAF50,
-  ); // Brighter green for dark mode
+    0xFF34D399,
+  ); // Verde más brillante para modo oscuro
   static const Color warningDark = Color(
-    0xFFFF9800,
-  ); // Brighter amber for dark mode
+    0xFFFBBF24,
+  ); // Ámbar más brillante para modo oscuro
   static const Color errorDark = Color(
-    0xFFEF5350,
-  ); // Brighter error red for dark mode
-  static const Color accentDark = Color(0xFFFFD700);
+    0xFFF87171,
+  ); // Rojo más brillante para modo oscuro
+  static const Color accentDark = Color(0xFFF9A8D4);
   static const Color backgroundDark = Color(
-    0xFF121212,
-  ); // Material dark background
+    0xFF111827,
+  ); // Fondo oscuro material
   static const Color surfaceDark = Color(
-    0xFF1E1E1E,
-  ); // Elevated surface for dark mode
+    0xFF1F2937,
+  ); // Superficie elevada para modo oscuro
   static const Color onPrimaryDark = Color(0xFF000000);
   static const Color onSecondaryDark = Color(0xFFFFFFFF);
-  static const Color onBackgroundDark = Color(0xFFFFFFFF);
-  static const Color onSurfaceDark = Color(0xFFFFFFFF);
+  static const Color onBackgroundDark = Color(0xFFF9FAFB);
+  static const Color onSurfaceDark = Color(0xFFF9FAFB);
   static const Color onErrorDark = Color(0xFF000000);
 
-  // Card and dialog colors
-  static const Color cardLight = Color(0xFFFAFAFA);
-  static const Color cardDark = Color(0xFF1E1E1E);
+  // Colores de tarjeta y diálogo
+  static const Color cardLight = Color(0xFFF9FAFB);
+  static const Color cardDark = Color(0xFF1F2937);
   static const Color dialogLight = Color(0xFFFFFFFF);
-  static const Color dialogDark = Color(0xFF2D2D2D);
+  static const Color dialogDark = Color(0xFF374151);
 
-  // Shadow colors (subtle elevation for civic minimalism)
-  static const Color shadowLight = Color(0x33000000); // 20% opacity black
-  static const Color shadowDark = Color(0x33FFFFFF); // 20% opacity white
+  // Colores de sombra
+  static const Color shadowLight = Color(0x1A000000); // 10% opacidad negro
+  static const Color shadowDark = Color(0x1AFFFFFF); // 10% opacidad blanco
 
-  // Divider colors (minimal 1px borders)
-  static const Color dividerLight = Color(0xFFE0E0E0);
-  static const Color dividerDark = Color(0xFF424242);
+  // Colores de divisor
+  static const Color dividerLight = Color(0xFFE5E7EB);
+  static const Color dividerDark = Color(0xFF4B5563);
 
-  // Text colors (optimized for outdoor mobile viewing)
-  static const Color textHighEmphasisLight = Color(0xFF212121); // Near-black
-  static const Color textMediumEmphasisLight = Color(0xFF757575); // Medium gray
-  static const Color textDisabledLight = Color(0xFFBDBDBD); // Light gray
+  // Colores de texto
+  static const Color textHighEmphasisLight = Color(0xFF1F2937); // Casi negro
+  static const Color textMediumEmphasisLight = Color(0xFF6B7280); // Gris medio
+  static const Color textDisabledLight = Color(0xFF9CA3AF); // Gris claro
 
-  static const Color textHighEmphasisDark = Color(0xFFFFFFFF);
-  static const Color textMediumEmphasisDark = Color(0xFFB0B0B0);
-  static const Color textDisabledDark = Color(0xFF6B6B6B);
+  static const Color textHighEmphasisDark = Color(0xFFF9FAFB);
+  static const Color textMediumEmphasisDark = Color(0xFFD1D5DB);
+  static const Color textDisabledDark = Color(0xFF9CA3AF);
 
-  /// Light theme - Optimized for daytime emergency response
+  /// Tema claro - Optimizado para uso diurno
   static ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
     useMaterial3: true,
@@ -114,9 +112,9 @@ class AppTheme {
       secondaryContainer: secondaryVariantLight,
       onSecondaryContainer: onSecondaryLight,
       tertiary: accentLight,
-      onTertiary: Color(0xFF000000),
+      onTertiary: Color(0xFFFFFFFF),
       tertiaryContainer: accentLight,
-      onTertiaryContainer: Color(0xFF000000),
+      onTertiaryContainer: Color(0xFFFFFFFF),
       error: errorLight,
       onError: onErrorLight,
       surface: surfaceLight,
@@ -150,7 +148,7 @@ class AppTheme {
       color: cardLight,
       elevation: 2.0,
       shadowColor: shadowLight,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
@@ -172,7 +170,7 @@ class AppTheme {
       backgroundColor: primaryLight,
       foregroundColor: onPrimaryLight,
       elevation: 4.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(56.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -180,7 +178,9 @@ class AppTheme {
         backgroundColor: primaryLight,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         elevation: 2.0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -193,8 +193,10 @@ class AppTheme {
       style: OutlinedButton.styleFrom(
         foregroundColor: primaryLight,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        side: BorderSide(color: primaryLight, width: 1),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+        side: BorderSide(color: primaryLight, width: 1.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -207,7 +209,9 @@ class AppTheme {
       style: TextButton.styleFrom(
         foregroundColor: primaryLight,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -222,23 +226,23 @@ class AppTheme {
       filled: true,
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: dividerLight, width: 1),
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: dividerLight, width: 1.5),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: dividerLight, width: 1),
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: dividerLight, width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: BorderRadius.circular(12.0),
         borderSide: BorderSide(color: primaryLight, width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: errorLight, width: 1),
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: errorLight, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: BorderRadius.circular(12.0),
         borderSide: BorderSide(color: errorLight, width: 2),
       ),
       labelStyle: GoogleFonts.inter(
@@ -262,13 +266,13 @@ class AppTheme {
         if (states.contains(WidgetState.selected)) {
           return primaryLight;
         }
-        return Color(0xFFBDBDBD);
+        return Color(0xFF9CA3AF);
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return primaryLight.withValues(alpha: 0.5);
         }
-        return Color(0xFFE0E0E0);
+        return Color(0xFFE5E7EB);
       }),
     ),
     checkboxTheme: CheckboxThemeData(
@@ -320,7 +324,7 @@ class AppTheme {
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
         color: onSurfaceLight.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       textStyle: GoogleFonts.inter(
         fontSize: 12,
@@ -338,20 +342,20 @@ class AppTheme {
       ),
       actionTextColor: accentLight,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       elevation: 4.0,
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: surfaceLight,
       elevation: 8.0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: dialogLight,
       elevation: 8.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       titleTextStyle: GoogleFonts.roboto(
         fontSize: 20,
         fontWeight: FontWeight.w500,
@@ -365,7 +369,7 @@ class AppTheme {
     ),
   );
 
-  /// Dark theme - Optimized for night-time emergency response
+  /// Tema oscuro - Optimizado para uso nocturno
   static ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
     useMaterial3: true,
@@ -416,7 +420,7 @@ class AppTheme {
       color: cardDark,
       elevation: 2.0,
       shadowColor: shadowDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
@@ -438,7 +442,7 @@ class AppTheme {
       backgroundColor: primaryDark,
       foregroundColor: onPrimaryDark,
       elevation: 4.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(56.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -446,7 +450,9 @@ class AppTheme {
         backgroundColor: primaryDark,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         elevation: 2.0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -459,8 +465,10 @@ class AppTheme {
       style: OutlinedButton.styleFrom(
         foregroundColor: primaryDark,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        side: BorderSide(color: primaryDark, width: 1),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+        side: BorderSide(color: primaryDark, width: 1.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -473,7 +481,9 @@ class AppTheme {
       style: TextButton.styleFrom(
         foregroundColor: primaryDark,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -488,23 +498,23 @@ class AppTheme {
       filled: true,
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: dividerDark, width: 1),
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: dividerDark, width: 1.5),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: dividerDark, width: 1),
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: dividerDark, width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: BorderRadius.circular(12.0),
         borderSide: BorderSide(color: primaryDark, width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: errorDark, width: 1),
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: errorDark, width: 1.5),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: BorderRadius.circular(12.0),
         borderSide: BorderSide(color: errorDark, width: 2),
       ),
       labelStyle: GoogleFonts.inter(
@@ -528,13 +538,13 @@ class AppTheme {
         if (states.contains(WidgetState.selected)) {
           return primaryDark;
         }
-        return Color(0xFF6B6B6B);
+        return Color(0xFF9CA3AF);
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return primaryDark.withValues(alpha: 0.5);
         }
-        return Color(0xFF424242);
+        return Color(0xFF4B5563);
       }),
     ),
     checkboxTheme: CheckboxThemeData(
@@ -586,7 +596,7 @@ class AppTheme {
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
         color: onSurfaceDark.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       textStyle: GoogleFonts.inter(
         fontSize: 12,
@@ -604,20 +614,20 @@ class AppTheme {
       ),
       actionTextColor: accentDark,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       elevation: 4.0,
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: surfaceDark,
       elevation: 8.0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: dialogDark,
       elevation: 8.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       titleTextStyle: GoogleFonts.roboto(
         fontSize: 20,
         fontWeight: FontWeight.w500,
@@ -631,8 +641,8 @@ class AppTheme {
     ),
   );
 
-  /// Helper method to build text theme based on brightness
-  /// Implements Typography Standards: Roboto for headings/captions, Inter (replacing Open Sans) for body
+  /// Método auxiliar para construir el tema de texto según el brillo
+  /// Implementa Estándares de Tipografía: Roboto para encabezados/subtítulos, Inter para cuerpo
   static TextTheme _buildTextTheme({required bool isLight}) {
     final Color textHighEmphasis = isLight
         ? textHighEmphasisLight
@@ -643,7 +653,7 @@ class AppTheme {
     final Color textDisabled = isLight ? textDisabledLight : textDisabledDark;
 
     return TextTheme(
-      // Display styles - Roboto for headings
+      // Estilos de Display - Roboto para encabezados
       displayLarge: GoogleFonts.roboto(
         fontSize: 57,
         fontWeight: FontWeight.w400,
@@ -660,7 +670,7 @@ class AppTheme {
         fontWeight: FontWeight.w400,
         color: textHighEmphasis,
       ),
-      // Headline styles - Roboto for headings
+      // Estilos de Headline - Roboto para encabezados
       headlineLarge: GoogleFonts.roboto(
         fontSize: 32,
         fontWeight: FontWeight.w500,
@@ -676,7 +686,7 @@ class AppTheme {
         fontWeight: FontWeight.w500,
         color: textHighEmphasis,
       ),
-      // Title styles - Roboto for headings
+      // Estilos de Title - Roboto para encabezados
       titleLarge: GoogleFonts.roboto(
         fontSize: 22,
         fontWeight: FontWeight.w500,
@@ -695,7 +705,7 @@ class AppTheme {
         color: textHighEmphasis,
         letterSpacing: 0.1,
       ),
-      // Body styles - Inter (replacing Open Sans) for body text
+      // Estilos de Body - Inter para texto de cuerpo
       bodyLarge: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,
@@ -714,7 +724,7 @@ class AppTheme {
         color: textMediumEmphasis,
         letterSpacing: 0.4,
       ),
-      // Label styles - Roboto for captions
+      // Estilos de Label - Roboto para subtítulos
       labelLarge: GoogleFonts.roboto(
         fontSize: 14,
         fontWeight: FontWeight.w500,
@@ -736,31 +746,31 @@ class AppTheme {
     );
   }
 
-  /// Animation duration constants (200-300ms for essential animations)
+  /// Constantes de duración de animación (200-300ms para animaciones esenciales)
   static const Duration shortAnimationDuration = Duration(milliseconds: 200);
   static const Duration mediumAnimationDuration = Duration(milliseconds: 250);
   static const Duration longAnimationDuration = Duration(milliseconds: 300);
 
-  /// Border radius constants (8px for interactive elements)
-  static const double defaultBorderRadius = 8.0;
-  static const double cardBorderRadius = 8.0;
-  static const double buttonBorderRadius = 8.0;
-  static const double bottomSheetBorderRadius = 16.0;
+  /// Constantes de radio de borde (12px para elementos interactivos)
+  static const double defaultBorderRadius = 12.0;
+  static const double cardBorderRadius = 12.0;
+  static const double buttonBorderRadius = 12.0;
+  static const double bottomSheetBorderRadius = 20.0;
 
-  /// Elevation constants (2-4dp blur radius)
+  /// Constantes de elevación (2-4dp radio de desenfoque)
   static const double cardElevation = 2.0;
   static const double buttonElevation = 2.0;
   static const double fabElevation = 4.0;
   static const double bottomSheetElevation = 8.0;
   static const double dialogElevation = 8.0;
 
-  /// Touch target sizes (44pt/48dp minimum)
+  /// Tamaños de objetivo táctil (44pt/48dp mínimo)
   static const double minTouchTargetSize = 48.0;
   static const double emergencyButtonSize = 56.0;
   static const double iconSize = 24.0;
   static const double smallIconSize = 20.0;
 
-  /// Spacing constants
+  /// Constantes de espaciado
   static const double spacingXSmall = 4.0;
   static const double spacingSmall = 8.0;
   static const double spacingMedium = 16.0;
