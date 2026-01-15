@@ -1,11 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../core/app_export.dart';
-import '../widgets/custom_error_widget.dart';
-import 'package:flutter/foundation.dart';
-import 'services/supabase_service.dart';
+import './services/supabase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,32 +12,12 @@ void main() async {
   try {
     await SupabaseService.initialize();
   } catch (e) {
-    debugPrint('Failed to initialize Supabase: $e');
+    if (kDebugMode) {
+      print('❌ Failed to initialize Supabase: $e');
+    }
   }
 
-  bool hasShownError = false;
-
-  // 🚨 CRITICAL: Custom error handling - DO NOT REMOVE
-  ErrorWidget.builder = (FlutterErrorDetails details) {
-    if (!hasShownError) {
-      hasShownError = true;
-
-      // Reset flag after 3 seconds to allow error widget on new screens
-      Future.delayed(Duration(seconds: 5), () {
-        hasShownError = false;
-      });
-
-      return CustomErrorWidget(errorDetails: details);
-    }
-    return SizedBox.shrink();
-  };
-
-  // 🚨 CRITICAL: Device orientation lock - DO NOT REMOVE
-  Future.wait([
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
-  ]).then((value) {
-    runApp(MyApp());
-  });
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {

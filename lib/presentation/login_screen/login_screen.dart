@@ -200,165 +200,319 @@ class _LoginScreenState extends State<LoginScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(height: 4.h),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: 4.h),
 
-              // Safety shield logo
-              Container(
-                width: 30.w,
-                height: 30.w,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+                // Safety shield logo
+                Container(
+                  width: 30.w,
+                  height: 30.w,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: CustomIconWidget(
+                      iconName: 'shield',
+                      color: theme.colorScheme.primary,
+                      size: 15.w,
+                    ),
+                  ),
                 ),
-                child: Center(
-                  child: CustomIconWidget(
-                    iconName: 'shield',
+                SizedBox(height: 3.h),
+
+                // App title
+                Text(
+                  'BatFinder',
+                  style: theme.textTheme.headlineLarge?.copyWith(
                     color: theme.colorScheme.primary,
-                    size: 15.w,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-              SizedBox(height: 3.h),
+                SizedBox(height: 1.h),
 
-              // App title
-              Text(
-                'BatFinder',
-                style: theme.textTheme.headlineLarge?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 1.h),
-
-              Text(
-                'Seguridad Ciudadana en Colombia',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 4.h),
-
-              // Login form fields
-              LoginFormFields(
-                emailController: _emailController,
-                passwordController: _passwordController,
-                formKey: _formKey,
-              ),
-              SizedBox(height: 2.h),
-
-              // Remember me toggle
-              RememberMeToggle(
-                onChanged: (value) {
-                  setState(() {
-                    _rememberMe = value;
-                  });
-                },
-              ),
-              SizedBox(height: 3.h),
-
-              // Sign in button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin,
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 2.h),
+                Text(
+                  'Seguridad Ciudadana en Colombia',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  child: _isLoading
-                      ? SizedBox(
-                          width: 5.w,
-                          height: 5.w,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              theme.colorScheme.onPrimary,
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 4.h),
+
+                // Login form fields
+                LoginFormFields(
+                  emailController: _emailController,
+                  passwordController: _passwordController,
+                  formKey: _formKey,
+                ),
+                SizedBox(height: 2.h),
+
+                // Remember me toggle
+                RememberMeToggle(
+                  onChanged: (value) {
+                    setState(() {
+                      _rememberMe = value;
+                    });
+                  },
+                ),
+                SizedBox(height: 3.h),
+
+                // Sign in button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 2.h),
+                    ),
+                    child: _isLoading
+                        ? SizedBox(
+                            width: 5.w,
+                            height: 5.w,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                theme.colorScheme.onPrimary,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            'Iniciar Sesión',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: theme.colorScheme.onPrimary,
                             ),
                           ),
-                        )
-                      : Text(
-                          'Iniciar Sesión',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.onPrimary,
-                          ),
-                        ),
-                ),
-              ),
-
-              // Biometric authentication button
-              BiometricAuthButton(onAuthenticated: _handleBiometricAuth),
-              SizedBox(height: 2.h),
-
-              // Emergency access button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _handleEmergencyAccess,
-                  icon: CustomIconWidget(
-                    iconName: 'emergency',
-                    color: theme.colorScheme.error,
-                    size: 6.w,
-                  ),
-                  label: Text(
-                    'Acceso de Emergencia',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 1.8.h),
-                    side: BorderSide(
-                      color: theme.colorScheme.error,
-                      width: 1.5,
-                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: 4.h),
 
-              // Social login buttons
-              SocialLoginButtons(
-                onGoogleLogin: () => _handleSocialLogin('Google'),
-                onFacebookLogin: () => _handleSocialLogin('Facebook'),
-              ),
-              SizedBox(height: 4.h),
+                // Biometric authentication button
+                BiometricAuthButton(onAuthenticated: _handleBiometricAuth),
+                SizedBox(height: 2.h),
 
-              // Register link
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '¿Nuevo usuario? ',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                // Emergency access button
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _handleEmergencyAccess,
+                    icon: CustomIconWidget(
+                      iconName: 'emergency',
+                      color: theme.colorScheme.error,
+                      size: 6.w,
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(
-                        context,
-                        rootNavigator: true,
-                      ).pushNamed('/user-registration');
-                    },
-                    child: Text(
-                      'Registrarse',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600,
+                    label: Text(
+                      'Acceso de Emergencia',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 1.8.h),
+                      side: BorderSide(
+                        color: theme.colorScheme.error,
+                        width: 1.5,
                       ),
                     ),
                   ),
-                ],
+                ),
+                SizedBox(height: 4.h),
+
+                // Social login buttons
+                SocialLoginButtons(
+                  onGoogleLogin: () => _handleSocialLogin('Google'),
+                  onFacebookLogin: () => _handleSocialLogin('Facebook'),
+                ),
+                SizedBox(height: 4.h),
+
+                // Register link
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '¿Nuevo usuario? ',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(
+                          context,
+                          rootNavigator: true,
+                        ).pushNamed('/user-registration');
+                      },
+                      child: Text(
+                        'Registrarse',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Demo Credentials Section for Testing
+                Container(
+                  padding: EdgeInsets.all(3.w),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12.0),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 5.w,
+                            color: Colors.blue.shade700,
+                          ),
+                          SizedBox(width: 2.w),
+                          Text(
+                            'Credenciales de Prueba',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 2.h),
+                      _buildDemoCredential(
+                        'Ciudadano',
+                        'ciudadano@batfinder.com',
+                        'ciudadano123',
+                        Colors.green,
+                      ),
+                      SizedBox(height: 1.h),
+                      _buildDemoCredential(
+                        'Autoridad',
+                        'autoridad@policia.mx',
+                        'autoridad123',
+                        Colors.blue,
+                      ),
+                      SizedBox(height: 1.h),
+                      _buildDemoCredential(
+                        'ONG',
+                        'contacto@seguridadciudadana.org',
+                        'ong123',
+                        Colors.purple,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDemoCredential(
+    String role,
+    String email,
+    String password,
+    Color color,
+  ) {
+    return Container(
+      padding: EdgeInsets.all(2.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: color.withAlpha(77)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(26),
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+                child: Text(
+                  role,
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
+          SizedBox(height: 1.h),
+          Row(
+            children: [
+              Icon(
+                Icons.email_outlined,
+                size: 4.w,
+                color: Colors.grey.shade600,
+              ),
+              SizedBox(width: 2.w),
+              Expanded(
+                child: Text(
+                  email,
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.copy, size: 4.w, color: Colors.blue),
+                onPressed: () {
+                  // Copy email to clipboard
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Email copiado: $email')),
+                  );
+                },
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Icon(Icons.lock_outline, size: 4.w, color: Colors.grey.shade600),
+              SizedBox(width: 2.w),
+              Expanded(
+                child: Text(
+                  password,
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.copy, size: 4.w, color: Colors.blue),
+                onPressed: () {
+                  // Copy password to clipboard
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Contraseña copiada: $password')),
+                  );
+                },
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
