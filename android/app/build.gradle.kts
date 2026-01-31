@@ -9,6 +9,7 @@ android {
     namespace = "com.example.batfinder"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+    //!SECTION test code
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
