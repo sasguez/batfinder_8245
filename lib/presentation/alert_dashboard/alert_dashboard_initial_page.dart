@@ -377,24 +377,22 @@ class _AlertDashboardInitialPageState extends State<AlertDashboardInitialPage> {
                     ),
                   )
                 else
-                  ..._recentAlerts
-                      .map(
-                        (alert) => AlertCardWidget(
-                          alertData: alert,
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            Navigator.of(
-                              context,
-                              rootNavigator: true,
-                            ).pushNamed('/alert-details', arguments: alert);
-                          },
-                          onShare: () {
-                            HapticFeedback.lightImpact();
-                            // Share alert functionality
-                          },
-                        ),
-                      )
-                      ,
+                  ..._recentAlerts.map(
+                    (alert) => AlertCardWidget(
+                      alertData: alert,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.of(
+                          context,
+                          rootNavigator: true,
+                        ).pushNamed('/alert-details', arguments: alert);
+                      },
+                      onShare: () {
+                        HapticFeedback.lightImpact();
+                        // Share alert functionality
+                      },
+                    ),
+                  ),
 
                 SizedBox(height: 10.h),
               ],
