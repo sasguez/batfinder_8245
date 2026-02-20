@@ -2,7 +2,7 @@
 
 A modern Flutter-based mobile application utilizing the latest mobile development technologies and tools for building responsive cross-platform applications.
 
-## 🛠️ Ejecucion exaustiva para docker
+## 🛠️ Ejecucion exhaustiva para docker
 
 - Abrir terminal con permisos de administrador en windows
 - Introducir la siguiente linea de codigo
