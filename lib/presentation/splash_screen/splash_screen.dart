@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
+import '../../services/supabase_service.dart';
 
 /// Splash Screen for BatFinder Colombian Safety Application
 /// Provides branded launch experience while initializing security services
@@ -18,7 +20,6 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
-  bool _initializationComplete = false;
   bool _showRetry = false;
   String _loadingMessage = 'Inicializando servicios de seguridad...';
 
@@ -68,10 +69,6 @@ class _SplashScreenState extends State<SplashScreen>
       });
       await Future.delayed(const Duration(milliseconds: 600));
 
-      setState(() {
-        _initializationComplete = true;
-      });
-
       // Haptic feedback for successful initialization
       HapticFeedback.mediumImpact();
 
@@ -89,20 +86,19 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _navigateToNextScreen() {
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushReplacementNamed(AppRoutes.login);
     // Simulate authentication check
-    final bool isAuthenticated = false;
-    final bool isNewUser = true;
+    final bool isAuthenticated =
+        Supabase.instance.client.auth.currentUser != null;
 
     if (isAuthenticated) {
       Navigator.of(
         context,
         rootNavigator: true,
       ).pushReplacementNamed(AppRoutes.alertDashboard);
-    } else if (isNewUser) {
-      Navigator.of(
-        context,
-        rootNavigator: true,
-      ).pushReplacementNamed(AppRoutes.onboarding);
     } else {
       Navigator.of(
         context,
@@ -113,6 +109,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    Supabase.instance.client.removeAllChannels(); // 👈 limpieza
     _animationController.dispose();
     super.dispose();
   }

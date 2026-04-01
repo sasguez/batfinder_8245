@@ -8,6 +8,7 @@ import './widgets/biometric_auth_button.dart';
 import './widgets/login_form_fields.dart';
 import './widgets/remember_me_toggle.dart';
 import './widgets/social_login_buttons.dart';
+import '../../services/supabase_service.dart';
 
 /// Login Screen for BatFinder Colombian Safety App
 /// Provides secure authentication with biometric support and emergency access
@@ -189,10 +190,33 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _handleSocialLogin(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Inicio de sesión con $provider próximamente')),
-    );
+  void _handleSocialLogin(String provider) async {
+    if (provider == 'Google') {
+      try {
+        setState(() => _isLoading = true);
+
+        // ✅ Asegúrate que no haya paréntesis extra al final
+        await SupabaseService.signInWithGoogle();
+
+        // Esto es lo que te llevará al Dashboard (Imagen 3)
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.alertDashboard);
+        }
+      } catch (e) {
+        if (mounted) {
+          _showErrorDialog('Error al conectar con Google: $e');
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    } else {
+      // Por ahora dejamos Facebook como "próximamente"
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Inicio de sesión con $provider próximamente')),
+      );
+    }
   }
 
   @override

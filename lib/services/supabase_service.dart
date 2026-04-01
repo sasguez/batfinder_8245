@@ -4,13 +4,18 @@ import 'package:flutter/foundation.dart';
 class SupabaseService {
   static SupabaseClient? _client;
 
+  // =============================
+  // INITIALIZATION
+  // =============================
   static Future<void> initialize() async {
     try {
       await Supabase.initialize(
-        url: const String.fromEnvironment('SUPABASE_URL'),
-        anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
+        url: 'https://rnnejozkbyagiibsntwc.supabase.co',
+        anonKey: 'sb_publishable_xCYOEK6DMW_hFfeLImRIew__uVVeUA1',
       );
+
       _client = Supabase.instance.client;
+
       if (kDebugMode) {
         print('✅ Supabase initialized successfully');
       }
@@ -29,7 +34,11 @@ class SupabaseService {
     return _client!;
   }
 
+  // =============================
+  // AUTHENTICATION
+  // =============================
   // Authentication Methods
+
   static Future<AuthResponse> signInWithEmail({
     required String email,
     required String password,
@@ -47,6 +56,22 @@ class SupabaseService {
     }
   }
 
+  // 👇👇👇 PEGA ESTO AQUÍ EXACTO 👇👇👇
+
+  static Future<void> signInWithGoogle() async {
+    try {
+      await client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: kIsWeb ? null : 'io.supabase.flutter://login-callback',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Google Sign-In error: $e');
+      }
+      rethrow;
+    }
+  }
+
   static Future<AuthResponse> signUpWithEmail({
     required String email,
     required String password,
@@ -59,9 +84,7 @@ class SupabaseService {
         data: metadata,
       );
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Sign up error: $e');
-      }
+      if (kDebugMode) print('❌ Sign up error: $e');
       rethrow;
     }
   }
@@ -70,21 +93,19 @@ class SupabaseService {
     try {
       await client.auth.signOut();
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Sign out error: $e');
-      }
+      if (kDebugMode) print('❌ Sign out error: $e');
       rethrow;
     }
   }
 
   static User? get currentUser => client.auth.currentUser;
-
   static String? get currentUserId => client.auth.currentUser?.id;
-
   static Stream<AuthState> get authStateChanges =>
       client.auth.onAuthStateChange;
 
-  // User Profile Methods
+  // =============================
+  // USER PROFILE
+  // =============================
   static Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
       final response = await client
@@ -92,11 +113,10 @@ class SupabaseService {
           .select()
           .eq('user_id', userId)
           .maybeSingle();
+
       return response;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Get user profile error: $e');
-      }
+      if (kDebugMode) print('❌ Get user profile error: $e');
       return null;
     }
   }
@@ -108,14 +128,14 @@ class SupabaseService {
     try {
       await client.from('user_profiles').update(updates).eq('user_id', userId);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Update profile error: $e');
-      }
+      if (kDebugMode) print('❌ Update profile error: $e');
       rethrow;
     }
   }
 
-  // Incident Methods
+  // =============================
+  // INCIDENTS
+  // =============================
   static Future<List<Map<String, dynamic>>> getIncidents({
     String? status,
     String? severity,
@@ -123,31 +143,28 @@ class SupabaseService {
   }) async {
     try {
       var query = client.from('incidents').select('''
-            *,
-            reporter:user_profiles!incidents_reporter_id_fkey(
-              full_name,
-              avatar_url,
-              verification_status
-            ),
-            incident_media(*)
-          ''');
+        *,
+        reporter:user_profiles!incidents_reporter_id_fkey(
+          full_name,
+          avatar_url,
+          verification_status
+        ),
+        incident_media(*)
+      ''');
 
-      // Apply filters before ordering and limit
       if (status != null) {
         query = query.eq('status', status);
       }
+
       if (severity != null) {
         query = query.eq('severity', severity);
       }
 
-      // Apply ordering and limit after filters
       final result = query.order('created_at', ascending: false).limit(limit);
 
       return await result;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Get incidents error: $e');
-      }
+      if (kDebugMode) print('❌ Get incidents error: $e');
       return [];
     }
   }
@@ -159,26 +176,25 @@ class SupabaseService {
       final response = await client
           .from('incidents')
           .select('''
-            *,
-            reporter:user_profiles!incidents_reporter_id_fkey(
-              full_name,
-              avatar_url,
-              verification_status,
-              role
-            ),
-            incident_media(*),
-            incident_comments(
-              *,
-              commenter:user_profiles(full_name, avatar_url)
-            )
-          ''')
+        *,
+        reporter:user_profiles!incidents_reporter_id_fkey(
+          full_name,
+          avatar_url,
+          verification_status,
+          role
+        ),
+        incident_media(*),
+        incident_comments(
+          *,
+          commenter:user_profiles(full_name, avatar_url)
+        )
+      ''')
           .eq('id', incidentId)
           .maybeSingle();
+
       return response;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Get incident details error: $e');
-      }
+      if (kDebugMode) print('❌ Get incident details error: $e');
       return null;
     }
   }
@@ -194,30 +210,32 @@ class SupabaseService {
     bool isAnonymous = false,
   }) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('User not authenticated');
+      final supabase = Supabase.instance.client;
 
-      final response = await client
+      final userId = currentUserId ?? 'test-user';
+
+      print('👤 User ID: $userId');
+      print('🚨 Intentando crear incidente...');
+
+      final response = await supabase
           .from('incidents')
           .insert({
-            'reporter_id': userId,
+            'user_id': userId,
             'title': title,
             'description': description,
             'incident_type': incidentType,
             'severity': severity,
-            'location': 'POINT($longitude $latitude)',
-            'location_address': locationAddress,
-            'is_anonymous': isAnonymous,
-            'status': 'pending',
+            'latitude': latitude,
+            'longitude': longitude,
           })
-          .select('id')
+          .select()
           .single();
 
-      return response['id'] as String;
+      print('✅ Incidente enviado correctamente');
+
+      return response['id'].toString();
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Create incident error: $e');
-      }
+      print('❌ ERROR: $e');
       rethrow;
     }
   }
@@ -232,9 +250,7 @@ class SupabaseService {
           .update({'status': status})
           .eq('id', incidentId);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Update incident status error: $e');
-      }
+      if (kDebugMode) print('❌ Update incident status error: $e');
       rethrow;
     }
   }
@@ -253,39 +269,32 @@ class SupabaseService {
         'comment': comment,
       });
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Add comment error: $e');
-      }
+      if (kDebugMode) print('❌ Add comment error: $e');
       rethrow;
     }
   }
 
-  // Chat Methods
+  // =============================
+  // CHAT
+  // =============================
   static Future<List<Map<String, dynamic>>> getChatRooms() async {
     try {
       final userId = currentUserId;
       if (userId == null) return [];
 
-      final response = await client
+      return await client
           .from('chat_participants')
           .select('''
-            chat_room_id,
-            chat_rooms(
-              *,
-              last_message:chat_messages(
-                message,
-                created_at
-              )
-            )
-          ''')
+        chat_room_id,
+        chat_rooms(
+          *,
+          last_message:chat_messages(message, created_at)
+        )
+      ''')
           .eq('user_id', userId)
           .order('joined_at', ascending: false);
-
-      return response;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Get chat rooms error: $e');
-      }
+      if (kDebugMode) print('❌ Get chat rooms error: $e');
       return [];
     }
   }
@@ -297,19 +306,13 @@ class SupabaseService {
       return await client
           .from('chat_messages')
           .select('''
-            *,
-            sender:user_profiles(
-              full_name,
-              avatar_url,
-              role
-            )
-          ''')
+        *,
+        sender:user_profiles(full_name, avatar_url, role)
+      ''')
           .eq('room_id', roomId)
           .order('created_at', ascending: true);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Get messages error: $e');
-      }
+      if (kDebugMode) print('❌ Get messages error: $e');
       return [];
     }
   }
@@ -328,14 +331,14 @@ class SupabaseService {
         'message': message,
       });
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Send message error: $e');
-      }
+      if (kDebugMode) print('❌ Send message error: $e');
       rethrow;
     }
   }
 
-  // Real-time Subscriptions
+  // =============================
+  // REALTIME
+  // =============================
   static RealtimeChannel subscribeToIncidents(
     Function(Map<String, dynamic>) onIncident,
   ) {
@@ -370,7 +373,9 @@ class SupabaseService {
         .subscribe();
   }
 
-  // Statistics Methods
+  // =============================
+  // STATISTICS
+  // =============================
   static Future<Map<String, dynamic>> getDashboardStatistics() async {
     try {
       final response = await client
@@ -388,9 +393,7 @@ class SupabaseService {
             'verified_alerts': 0,
           };
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Get statistics error: $e');
-      }
+      if (kDebugMode) print('❌ Get statistics error: $e');
       return {
         'total_alerts': 0,
         'active_alerts': 0,
@@ -407,15 +410,13 @@ class SupabaseService {
       return await client
           .from('user_activity_logs')
           .select('''
-            *,
-            user:user_profiles(full_name, avatar_url)
-          ''')
+        *,
+        user:user_profiles(full_name, avatar_url)
+      ''')
           .order('timestamp', ascending: false)
           .limit(limit);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Get recent activity error: $e');
-      }
+      if (kDebugMode) print('❌ Get recent activity error: $e');
       return [];
     }
   }
