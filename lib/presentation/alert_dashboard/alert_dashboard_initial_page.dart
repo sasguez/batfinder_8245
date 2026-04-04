@@ -32,7 +32,7 @@ class _AlertDashboardInitialPageState extends State<AlertDashboardInitialPage> {
       "timestamp": DateTime.now().subtract(Duration(minutes: 15)),
       "distance": "0.3 km",
       "severity": "high",
-      "severityColor": Color(0xFFD32F2F),
+      "severityColor": Color(0xFF7a729b),
       "description": "Reported theft near Parque 93",
       "location": "Calle 93 #13-45",
     },
@@ -377,24 +377,22 @@ class _AlertDashboardInitialPageState extends State<AlertDashboardInitialPage> {
                     ),
                   )
                 else
-                  ..._recentAlerts
-                      .map(
-                        (alert) => AlertCardWidget(
-                          alertData: alert,
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            Navigator.of(
-                              context,
-                              rootNavigator: true,
-                            ).pushNamed('/alert-details', arguments: alert);
-                          },
-                          onShare: () {
-                            HapticFeedback.lightImpact();
-                            // Share alert functionality
-                          },
-                        ),
-                      )
-                      ,
+                  ..._recentAlerts.map(
+                    (alert) => AlertCardWidget(
+                      alertData: alert,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.of(
+                          context,
+                          rootNavigator: true,
+                        ).pushNamed('/alert-details', arguments: alert);
+                      },
+                      onShare: () {
+                        HapticFeedback.lightImpact();
+                        // Share alert functionality
+                      },
+                    ),
+                  ),
 
                 SizedBox(height: 10.h),
               ],

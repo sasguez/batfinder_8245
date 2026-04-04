@@ -75,10 +75,10 @@ class AppTheme {
   static const Color onErrorDark = Color(0xFF000000);
 
   // Colores de tarjeta y diálogo
-  static const Color cardLight = Color(0xFFF9FAFB);
-  static const Color cardDark = Color(0xFF1F2937);
-  static const Color dialogLight = Color(0xFFFFFFFF);
-  static const Color dialogDark = Color(0xFF374151);
+  static const Color cardLight = Color(0xFF4B0082);
+  static const Color cardDark = Color(0xFF4B0082);
+  static const Color dialogLight = Color(0xFF4B0082);
+  static const Color dialogDark = Color(0xFF4B0082);
 
   // Colores de sombra
   static const Color shadowLight = Color(0x1A000000); // 10% opacidad negro
