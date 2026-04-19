@@ -190,34 +190,29 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _handleSocialLogin(String provider) async {
+ void _handleSocialLogin(String provider) async {
+  try {
+    setState(() => _isLoading = true);
+
     if (provider == 'Google') {
-      try {
-        setState(() => _isLoading = true);
+      await SupabaseService.signInWithGoogle();
+    } else if (provider == 'Facebook') {
+      await SupabaseService.signInWithFacebook();
+    }
 
-        // ✅ Asegúrate que no haya paréntesis extra al final
-        await SupabaseService.signInWithGoogle();
-
-        // Esto es lo que te llevará al Dashboard (Imagen 3)
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.alertDashboard);
-        }
-      } catch (e) {
-        if (mounted) {
-          _showErrorDialog('Error al conectar con Google: $e');
-        }
-      } finally {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
-      }
-    } else {
-      // Por ahora dejamos Facebook como "próximamente"
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Inicio de sesión con $provider próximamente')),
-      );
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, AppRoutes.alertDashboard);
+    }
+  } catch (e) {
+    if (mounted) {
+      _showErrorDialog('Error al conectar con $provider: $e');
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {

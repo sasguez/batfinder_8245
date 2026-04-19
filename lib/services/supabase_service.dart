@@ -58,20 +58,27 @@ class SupabaseService {
 
   // 👇👇👇 PEGA ESTO AQUÍ EXACTO 👇👇👇
 
-  static Future<void> signInWithGoogle() async {
-    try {
-      await client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: kIsWeb ? null : 'io.supabase.flutter://login-callback',
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Google Sign-In error: $e');
-      }
-      rethrow;
-    }
+ static Future<void> signInWithGoogle() async {
+  try {
+    await client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'io.supabase.flutter://login-callback',
+    );
+  } catch (e) {
+    print('Error Google Sign-In: $e');
   }
+}
 
+static Future<void> signInWithFacebook() async {
+  try {
+    await client.auth.signInWithOAuth(
+      OAuthProvider.facebook,
+      redirectTo: 'io.supabase.flutter://login-callback',
+    );
+  } catch (e) {
+    print('Error Facebook Sign-In: $e');
+  }
+}
   static Future<AuthResponse> signUpWithEmail({
     required String email,
     required String password,
