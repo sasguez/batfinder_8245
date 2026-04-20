@@ -8,19 +8,19 @@ class AppTheme {
 
   // Paleta Moderna Azul/Púrpura - Especificaciones de Color
   static const Color primaryLight = Color(
-    0xFF6366F1,
+    0xFF2563EB,
   ); // Índigo vibrante para acciones principales
   static const Color primaryVariantLight = Color(
     0xFF4F46E5,
   ); // Variante índigo más oscuro
   static const Color secondaryLight = Color(
-    0xFF8B5CF6,
+    0xFF14B8A6,
   ); // Púrpura para elementos secundarios
   static const Color secondaryVariantLight = Color(
     0xFF7C3AED,
   ); // Variante púrpura más oscura
   static const Color successLight = Color(
-    0xFF10B981,
+    0xFFF59E0B,
   ); // Verde esmeralda para estados exitosos
   static const Color warningLight = Color(
     0xFFF59E0B,
@@ -28,12 +28,12 @@ class AppTheme {
   static const Color errorLight = Color(
     0xFFEF4444,
   ); // Rojo para errores del sistema
-  static const Color accentLight = Color(0xFFF472B6); // Rosa para destacados
+  static const Color accentLight = Color(0xFFEC4899); // Rosa para destacados
   static const Color backgroundLight = Color(
-    0xFFFFFFFF,
+    0xFFF8FAFC,
   ); // Blanco puro para fondos principales
   static const Color surfaceLight = Color(
-    0xFFF9FAFB,
+    0xFFFFFFFF,
   ); // Blanco cálido para tarjetas
   static const Color onPrimaryLight = Color(0xFFFFFFFF);
   static const Color onSecondaryLight = Color(0xFFFFFFFF);
@@ -89,13 +89,13 @@ class AppTheme {
   static const Color dividerDark = Color(0xFF4B5563);
 
   // Colores de texto
-  static const Color textHighEmphasisLight = Color(0xFF1F2937); // Casi negro
-  static const Color textMediumEmphasisLight = Color(0xFF6B7280); // Gris medio
-  static const Color textDisabledLight = Color(0xFF9CA3AF); // Gris claro
+  static const Color textHighEmphasisLight = Color(0xFF111827); // Casi negro
+  static const Color textMediumEmphasisLight = Color(0xFF4B5563); // Gris medio
+  static const Color textDisabledLight = Color(0xFF9AA1AE); // Gris claro
 
-  static const Color textHighEmphasisDark = Color(0xFFF9FAFB);
-  static const Color textMediumEmphasisDark = Color(0xFFD1D5DB);
-  static const Color textDisabledDark = Color(0xFF9CA3AF);
+  static const Color textHighEmphasisDark = Color(0xFFF8FAFC);
+  static const Color textMediumEmphasisDark = Color(0xFFCBD5E1);
+  static const Color textDisabledDark = Color(0xFF94A3B8);
 
   /// Tema claro - Optimizado para uso diurno
   static ThemeData lightTheme = ThemeData(
@@ -107,7 +107,7 @@ class AppTheme {
       onPrimary: onPrimaryLight,
       primaryContainer: primaryVariantLight,
       onPrimaryContainer: onPrimaryLight,
-      secondary: secondaryLight,
+      secondary: Color(0xFF6366F1),
       onSecondary: onSecondaryLight,
       secondaryContainer: secondaryVariantLight,
       onSecondaryContainer: onSecondaryLight,
@@ -176,10 +176,10 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         foregroundColor: onPrimaryLight,
         backgroundColor: primaryLight,
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        elevation: 2.0,
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        elevation: 3.0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(16.0),
         ),
         textStyle: GoogleFonts.roboto(
           fontSize: 14,
@@ -418,9 +418,9 @@ class AppTheme {
     ),
     cardTheme: CardThemeData(
       color: cardDark,
-      elevation: 2.0,
+      elevation: 4.0,
       shadowColor: shadowDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
@@ -671,14 +671,16 @@ class AppTheme {
         color: textHighEmphasis,
       ),
       // Estilos de Headline - Roboto para encabezados
-      headlineLarge: GoogleFonts.roboto(
+      headlineLarge: GoogleFonts.poppins(
         fontSize: 32,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.5,
         color: textHighEmphasis,
       ),
-      headlineMedium: GoogleFonts.roboto(
+      headlineMedium: GoogleFonts.poppins(
         fontSize: 28,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.25,
         color: textHighEmphasis,
       ),
       headlineSmall: GoogleFonts.roboto(
@@ -708,9 +710,10 @@ class AppTheme {
       // Estilos de Body - Inter para texto de cuerpo
       bodyLarge: GoogleFonts.inter(
         fontSize: 16,
-        fontWeight: FontWeight.w400,
+        fontWeight: FontWeight.w500,
+        height: 1.5,
         color: textHighEmphasis,
-        letterSpacing: 0.5,
+        letterSpacing: 0.15,
       ),
       bodyMedium: GoogleFonts.inter(
         fontSize: 14,
@@ -725,11 +728,11 @@ class AppTheme {
         letterSpacing: 0.4,
       ),
       // Estilos de Label - Roboto para subtítulos
-      labelLarge: GoogleFonts.roboto(
+      labelLarge: GoogleFonts.poppins(
         fontSize: 14,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         color: textHighEmphasis,
-        letterSpacing: 0.1,
+        letterSpacing: 0.6,
       ),
       labelMedium: GoogleFonts.roboto(
         fontSize: 12,

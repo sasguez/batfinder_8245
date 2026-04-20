@@ -8,6 +8,7 @@ import './widgets/biometric_auth_button.dart';
 import './widgets/login_form_fields.dart';
 import './widgets/remember_me_toggle.dart';
 import './widgets/social_login_buttons.dart';
+import '../../services/supabase_service.dart';
 
 /// Login Screen for BatFinder Colombian Safety App
 /// Provides secure authentication with biometric support and emergency access
@@ -189,11 +190,29 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _handleSocialLogin(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Inicio de sesión con $provider próximamente')),
-    );
+ void _handleSocialLogin(String provider) async {
+  try {
+    setState(() => _isLoading = true);
+
+    if (provider == 'Google') {
+      await SupabaseService.signInWithGoogle();
+    } else if (provider == 'Facebook') {
+      await SupabaseService.signInWithFacebook();
+    }
+
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, AppRoutes.alertDashboard);
+    }
+  } catch (e) {
+    if (mounted) {
+      _showErrorDialog('Error al conectar con $provider: $e');
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
+}
 
   @override
   Widget build(BuildContext context) {

@@ -36,12 +36,11 @@ class AlertService {
     }
   }
 
-  // Create new alert
   static Future<String?> createAlert({
-    required String title,
-    required String description,
-    required String incidentType,
-    required String severity,
+    required String title, // <--- Agregado
+    required String description, // <--- Agregado
+    required String incidentType, // <--- Agregado
+    required String severity, // <--- Agregado
     required double latitude,
     required double longitude,
     String? locationAddress,

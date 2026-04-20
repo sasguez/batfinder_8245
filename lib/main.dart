@@ -8,12 +8,11 @@ import './services/supabase_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Supabase
   try {
     await SupabaseService.initialize();
   } catch (e) {
     if (kDebugMode) {
-      print('❌ Failed to initialize Supabase: $e');
+      print('❌ Error general: $e');
     }
   }
 
@@ -32,19 +31,21 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.light,
+
           // 🚨 CRITICAL: NEVER REMOVE OR MODIFY
           builder: (context, child) {
             return MediaQuery(
               data: MediaQuery.of(
                 context,
-              ).copyWith(textScaler: TextScaler.linear(1.0)),
+              ).copyWith(textScaler: const TextScaler.linear(1.0)),
               child: child!,
             );
           },
+
           // 🚨 END CRITICAL SECTION
           debugShowCheckedModeBanner: false,
           routes: AppRoutes.routes,
-          initialRoute: AppRoutes.splash,
+          initialRoute: AppRoutes.login, // Inicia siempre en el Splash
         );
       },
     );

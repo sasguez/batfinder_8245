@@ -18,7 +18,7 @@ class SafetyScoreWidget extends StatelessWidget {
 
   Color _getScoreColor(int score, ThemeData theme) {
     if (score >= 70) {
-      return Color(0xFF2E7D32); // Green - Safe
+      return Color(0xFF8B5CF6); // Green - Safe
     } else if (score >= 40) {
       return Color(0xFFF57C00); // Orange - Moderate
     } else {
@@ -28,11 +28,11 @@ class SafetyScoreWidget extends StatelessWidget {
 
   String _getScoreLabel(int score) {
     if (score >= 70) {
-      return 'Safe';
+      return 'Seguro';
     } else if (score >= 40) {
-      return 'Moderate';
+      return 'Moderado';
     } else {
-      return 'Unsafe';
+      return 'Inseguro';
     }
   }
 
@@ -83,7 +83,7 @@ class SafetyScoreWidget extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Safety Score',
+                          'Puntuación de seguridad',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -177,9 +177,9 @@ class SafetyScoreWidget extends StatelessWidget {
                   _buildStatItem(
                     context,
                     icon: 'trending_down',
-                    label: 'Incidents',
+                    label: 'Incidentes',
                     value: '12',
-                    color: theme.colorScheme.error,
+                    color: Color(0xFFDC2626),
                   ),
                   Container(
                     width: 1,
@@ -189,7 +189,7 @@ class SafetyScoreWidget extends StatelessWidget {
                   _buildStatItem(
                     context,
                     icon: 'people',
-                    label: 'Active Users',
+                    label: 'Usuarios Activos',
                     value: '847',
                     color: theme.colorScheme.primary,
                   ),
@@ -201,7 +201,7 @@ class SafetyScoreWidget extends StatelessWidget {
                   _buildStatItem(
                     context,
                     icon: 'verified_user',
-                    label: 'Safe Zones',
+                    label: 'Zonas Seguras',
                     value: '5',
                     color: Color(0xFF2E7D32),
                   ),

@@ -93,16 +93,45 @@ class AlertCardWidget extends StatelessWidget {
                     children: [
                       // Alert icon
                       Container(
-                        padding: EdgeInsets.all(2.w),
+                        padding: EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: (alertData["severityColor"] as Color)
-                              .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: (alertData["severityColor"] as Color)
+                                .withValues(alpha: 0.4),
+                            width: 2,
+                          ),
                         ),
-                        child: CustomIconWidget(
-                          iconName: alertData["icon"] as String,
-                          color: alertData["severityColor"] as Color,
-                          size: 24,
+                        child: Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                (alertData["severityColor"] as Color),
+                                (alertData["severityColor"] as Color)
+                                    .withValues(alpha: 0.7),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (alertData["severityColor"] as Color)
+                                    .withValues(alpha: 0.5),
+                                blurRadius: 18,
+                                offset: Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: CustomIconWidget(
+                              iconName: alertData["icon"] as String,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
                         ),
                       ),
                       SizedBox(width: 3.w),

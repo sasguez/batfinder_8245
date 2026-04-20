@@ -161,12 +161,10 @@ class ResponseTimeMonitoringService {
     int limit = 50,
   }) async {
     try {
-      var query = _supabase
-          .from('response_time_alerts')
-          .select()
-          .order('created_at', ascending: false)
-          .limit(limit);
+      // 1. Definimos la base de la consulta
+      var query = _supabase.from('response_time_alerts').select();
 
+      // 2. Aplicamos filtros condicionales
       if (alertStatus != null) {
         query = query.eq('alert_status', alertStatus);
       }
@@ -175,9 +173,16 @@ class ResponseTimeMonitoringService {
         query = query.eq('escalation_level', escalationLevel);
       }
 
-      final response = await query;
-      return (response as List)
-          .map((json) => ResponseTimeAlert.fromJson(json))
+      // 3. Ejecutamos la consulta con orden y límite
+      final List<dynamic> response = await query
+          .order('created_at', ascending: false)
+          .limit(limit);
+
+      // 4. Mapeamos los resultados
+      return response
+          .map(
+            (json) => ResponseTimeAlert.fromJson(json as Map<String, dynamic>),
+          )
           .toList();
     } catch (error) {
       print('Error fetching response time alerts: $error');
@@ -197,9 +202,7 @@ class ResponseTimeMonitoringService {
           .order('created_at', ascending: false);
 
       final data = response as List;
-      return data
-          .map((json) => ResponseTimeAlert.fromJson(json))
-          .toList();
+      return data.map((json) => ResponseTimeAlert.fromJson(json)).toList();
     } catch (error) {
       print('Error fetching incident alerts: $error');
       return [];
