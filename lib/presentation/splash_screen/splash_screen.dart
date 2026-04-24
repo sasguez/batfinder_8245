@@ -135,21 +135,22 @@ class _SplashScreenState extends State<SplashScreen>
                     width: 45.w,
                     height: 45.w,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20.w),
+                      shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
+                          color: const Color(0xFF7C3AED).withValues(alpha: 0.45),
+                          blurRadius: 40,
+                          spreadRadius: 4,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: Padding(
-                      padding: EdgeInsets.all(8.w),
+                    child: ClipOval(
                       child: CustomImageWidget(
-                        imageUrl: 'assets/images/batfinder-1768513763769.png',
-                        fit: BoxFit.contain,
+                        imageUrl: 'assets/images/app_icon.png',
+                        width: 45.w,
+                        height: 45.w,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),

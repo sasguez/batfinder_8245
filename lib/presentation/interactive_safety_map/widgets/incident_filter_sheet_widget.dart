@@ -36,10 +36,12 @@ class _IncidentFilterSheetWidgetState extends State<IncidentFilterSheetWidget> {
   ];
 
   final List<Map<String, dynamic>> _incidentTypes = [
-    {"label": "Robo", "icon": "local_police"},
-    {"label": "Violencia", "icon": "warning"},
-    {"label": "Actividad Sospechosa", "icon": "visibility"},
-    {"label": "Vandalismo", "icon": "broken_image"},
+    {"label": "Robo",                 "value": "theft",      "icon": "local_police"},
+    {"label": "Violencia",            "value": "assault",    "icon": "warning"},
+    {"label": "Actividad Sospechosa", "value": "suspicious", "icon": "visibility"},
+    {"label": "Vandalismo",           "value": "vandalism",  "icon": "broken_image"},
+    {"label": "Emergencia",           "value": "emergency",  "icon": "emergency"},
+    {"label": "Otro",                 "value": "other",      "icon": "help_outline"},
   ];
 
   final List<Map<String, dynamic>> _severityLevels = [
@@ -98,7 +100,8 @@ class _IncidentFilterSheetWidgetState extends State<IncidentFilterSheetWidget> {
           spacing: 2.w,
           runSpacing: 1.h,
           children: _incidentTypes.map((type) {
-            final isSelected = _selectedTypes.contains(type["label"]);
+            final value = type["value"] as String;
+            final isSelected = _selectedTypes.contains(value);
             return FilterChip(
               label: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -118,8 +121,8 @@ class _IncidentFilterSheetWidgetState extends State<IncidentFilterSheetWidget> {
               onSelected: (selected) {
                 setState(() {
                   selected
-                      ? _selectedTypes.add(type["label"] as String)
-                      : _selectedTypes.remove(type["label"]);
+                      ? _selectedTypes.add(value)
+                      : _selectedTypes.remove(value);
                 });
                 _applyFilters();
               },

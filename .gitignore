@@ -19,15 +19,9 @@ pubspec.lock
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
-**/ios/Runner/AppDelegate.swift
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
@@ -42,19 +36,25 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android Studio build artifacts
 /android/app/debug
 /android/app/profile
 /android/app/release
 /android/app/.cxx
-/android/app/src/main/AndroidManifest.xml
 
-ios.*.AppDelegate.swift
-*.apk
-# Prueba
+# API keys y credenciales — NUNCA subir a git
 /env.json
-#claude folder
+android/local.properties
+android/key.properties
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+
+# Archivos locales de IDE y herramientas
 .claude/
 .vscode/
 /launch.json
 /devtools_options.yaml
+*.apk
+*.aab

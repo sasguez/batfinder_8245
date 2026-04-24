@@ -3,17 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/app_export.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/incident_filter_sheet_widget.dart';
 import './widgets/incident_marker_preview_widget.dart';
 import './widgets/map_controls_widget.dart';
 import './widgets/search_location_widget.dart';
 
-/// Interactive Safety Map Screen
-/// Provides real-time visualization of security incidents and safe zones
-/// Tab bar navigation with Map tab active
 class InteractiveSafetyMap extends StatefulWidget {
   const InteractiveSafetyMap({super.key});
 
@@ -25,103 +24,171 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
   GoogleMapController? _mapController;
   Position? _currentPosition;
   bool _isLoadingLocation = true;
+  bool _isLoadingIncidents = false;
   bool _showHeatMap = false;
   bool _showSearchBar = false;
   MapType _currentMapType = MapType.normal;
   Set<Marker> _markers = {};
-  Set<Circle> _geofencedZones = {};
   String? _selectedIncidentId;
+  RealtimeChannel? _incidentChannel;
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
 
-  // Mock incident data
-  final List<Map<String, dynamic>> _incidents = [
-    {
-      "id": "INC001",
-      "type": "Robo",
-      "severity": "high",
-      "title": "Robo a mano armada",
-      "description": "Reporte de robo con arma de fuego en la zona comercial",
-      "location": {"lat": 4.7110, "lng": -74.0721},
-      "timestamp": DateTime.now().subtract(Duration(minutes: 15)),
-      "status": "active",
-      "reporter": "Ciudadano Anónimo",
-      "verified": true,
-    },
-    {
-      "id": "INC002",
-      "type": "Actividad Sospechosa",
-      "severity": "medium",
-      "title": "Persona sospechosa",
-      "description": "Individuo merodeando vehículos estacionados",
-      "location": {"lat": 4.7095, "lng": -74.0735},
-      "timestamp": DateTime.now().subtract(Duration(hours: 1)),
-      "status": "investigating",
-      "reporter": "María González",
-      "verified": false,
-    },
-    {
-      "id": "INC003",
-      "type": "Violencia",
-      "severity": "critical",
-      "title": "Altercado violento",
-      "description": "Pelea con armas blancas reportada",
-      "location": {"lat": 4.7125, "lng": -74.0710},
-      "timestamp": DateTime.now().subtract(Duration(minutes: 45)),
-      "status": "active",
-      "reporter": "Carlos Ramírez",
-      "verified": true,
-    },
-    {
-      "id": "INC004",
-      "type": "Robo",
-      "severity": "low",
-      "title": "Hurto de celular",
-      "description": "Robo de dispositivo móvil sin violencia",
-      "location": {"lat": 4.7080, "lng": -74.0745},
-      "timestamp": DateTime.now().subtract(Duration(hours: 3)),
-      "status": "resolved",
-      "reporter": "Ana Martínez",
-      "verified": true,
-    },
-  ];
+  List<Map<String, dynamic>> _allIncidents = [];
+  List<Map<String, dynamic>> _incidents = [];
+  Map<String, dynamic> _activeFilters = {};
 
-  // Mock emergency services data
-  final List<Map<String, dynamic>> _emergencyServices = [
-    {
-      "type": "police",
-      "name": "Estación de Policía Centro",
-      "location": {"lat": 4.7100, "lng": -74.0730},
-      "phone": "123",
-    },
-    {
-      "type": "hospital",
-      "name": "Hospital San José",
-      "location": {"lat": 4.7115, "lng": -74.0715},
-      "phone": "125",
-    },
-  ];
+  // Bogotá como punto central por defecto (app colombiana)
+  static const LatLng _defaultCenter = LatLng(4.7110, -74.0721);
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
-    _initializeMarkers();
-    _initializeGeofencedZones();
+    _loadIncidents();
+    _subscribeToIncidents();
   }
 
   @override
   void dispose() {
+    _incidentChannel?.unsubscribe();
     _mapController?.dispose();
     _sheetController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadIncidents() async {
+    if (_isLoadingIncidents) return;
+    setState(() => _isLoadingIncidents = true);
+    try {
+      final raw = await SupabaseService.getIncidents();
+      if (mounted) {
+        final normalized = raw.map(_normalizeIncident).toList();
+        setState(() {
+          _allIncidents = normalized;
+          _incidents = _applyFilters(normalized, _activeFilters);
+          _isLoadingIncidents = false;
+        });
+        _rebuildMarkers();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingIncidents = false);
+    }
+  }
+
+  void _subscribeToIncidents() {
+    _incidentChannel = SupabaseService.subscribeToIncidents((newRaw) {
+      if (!mounted) return;
+      final normalized = _normalizeIncident(newRaw);
+      _allIncidents = [normalized, ..._allIncidents];
+      setState(() => _incidents = _applyFilters(_allIncidents, _activeFilters));
+      _rebuildMarkers();
+    });
+  }
+
+  List<Map<String, dynamic>> _applyFilters(
+    List<Map<String, dynamic>> source,
+    Map<String, dynamic> filters,
+  ) {
+    if (filters.isEmpty) return source;
+
+    final selectedTypes = (filters['types'] as List?)?.cast<String>() ?? [];
+    final selectedSeverities =
+        (filters['severities'] as List?)?.cast<String>() ?? [];
+    final timeRange = filters['timeRange'] as String? ?? '';
+
+    final cutoff = _timeCutoff(timeRange);
+
+    return source.where((inc) {
+      if (selectedTypes.isNotEmpty &&
+          !selectedTypes.contains(inc['incident_type_raw'] as String?)) {
+        return false;
+      }
+      if (selectedSeverities.isNotEmpty &&
+          !selectedSeverities.contains(inc['severity'] as String?)) {
+        return false;
+      }
+      if (cutoff != null) {
+        final ts = inc['timestamp'] as DateTime;
+        if (ts.isBefore(cutoff)) return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  DateTime? _timeCutoff(String timeRange) {
+    final now = DateTime.now();
+    switch (timeRange) {
+      case 'Última hora':      return now.subtract(const Duration(hours: 1));
+      case 'Últimas 6 horas': return now.subtract(const Duration(hours: 6));
+      case 'Últimas 24 horas': return now.subtract(const Duration(hours: 24));
+      case 'Última semana':   return now.subtract(const Duration(days: 7));
+      default:                return null;
+    }
+  }
+
+  void _onFiltersApplied(Map<String, dynamic> filters) {
+    setState(() {
+      _activeFilters = filters;
+      _incidents = _applyFilters(_allIncidents, filters);
+      _selectedIncidentId = null;
+    });
+    _rebuildMarkers();
+  }
+
+  // Traduce la fila de Supabase al formato que esperan los widgets hijos.
+  Map<String, dynamic> _normalizeIncident(Map<String, dynamic> raw) {
+    final lat = (raw['latitude'] as num?)?.toDouble() ?? 0.0;
+    final lng = (raw['longitude'] as num?)?.toDouble() ?? 0.0;
+
+    final reporter = raw['reporter'] as Map<String, dynamic>?;
+    final isAnonymous = raw['is_anonymous'] as bool? ?? false;
+    final reporterName = isAnonymous || reporter == null
+        ? 'Ciudadano Anónimo'
+        : (reporter['full_name'] as String? ?? 'Ciudadano Anónimo');
+    final verified = reporter != null &&
+        (reporter['verification_status'] as String?) == 'verified';
+
+    DateTime timestamp;
+    try {
+      final rawDate = raw['created_at'] as String?;
+      timestamp = rawDate != null ? DateTime.parse(rawDate) : DateTime.now();
+    } catch (_) {
+      timestamp = DateTime.now();
+    }
+
+    return {
+      'id': raw['id'] as String? ?? '',
+      'type': _localizeIncidentType(raw['incident_type'] as String? ?? 'other'),
+      'incident_type_raw': raw['incident_type'] as String? ?? 'other',
+      'severity': raw['severity'] as String? ?? 'low',
+      'title': raw['title'] as String? ?? 'Sin título',
+      'description': raw['description'] as String? ?? '',
+      'location': {'lat': lat, 'lng': lng},
+      'timestamp': timestamp,
+      'status': raw['status'] as String? ?? 'active',
+      'reporter': reporterName,
+      'verified': verified,
+    };
+  }
+
+  String _localizeIncidentType(String type) {
+    switch (type) {
+      case 'theft':      return 'Robo';
+      case 'assault':    return 'Violencia';
+      case 'vandalism':  return 'Vandalismo';
+      case 'suspicious': return 'Actividad Sospechosa';
+      case 'emergency':  return 'Emergencia';
+      case 'other':      return 'Otro';
+      default:           return 'Desconocido';
+    }
   }
 
   Future<void> _getCurrentLocation() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setState(() => _isLoadingLocation = false);
+        if (mounted) setState(() => _isLoadingLocation = false);
         return;
       }
 
@@ -129,122 +196,73 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() => _isLoadingLocation = false);
+          if (mounted) setState(() => _isLoadingLocation = false);
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        setState(() => _isLoadingLocation = false);
+        if (mounted) setState(() => _isLoadingLocation = false);
         return;
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      setState(() {
-        _currentPosition = position;
-        _isLoadingLocation = false;
-      });
-
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(position.latitude, position.longitude),
-          15.0,
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
         ),
       );
-    } catch (e) {
-      setState(() => _isLoadingLocation = false);
+
+      if (mounted) {
+        setState(() {
+          _currentPosition = position;
+          _isLoadingLocation = false;
+        });
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(position.latitude, position.longitude),
+            15.0,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingLocation = false);
     }
   }
 
-  void _initializeMarkers() {
-    Set<Marker> markers = {};
-
-    for (var incident in _incidents) {
-      final location = incident["location"] as Map<String, dynamic>;
+  void _rebuildMarkers() {
+    final Set<Marker> markers = {};
+    for (final incident in _incidents) {
+      final location = incident['location'] as Map<String, dynamic>;
       markers.add(
         Marker(
-          markerId: MarkerId(incident["id"] as String),
+          markerId: MarkerId(incident['id'] as String),
           position: LatLng(
-            (location["lat"] as num).toDouble(),
-            (location["lng"] as num).toDouble(),
+            (location['lat'] as num).toDouble(),
+            (location['lng'] as num).toDouble(),
           ),
           icon: BitmapDescriptor.defaultMarkerWithHue(
-            _getSeverityColor(incident["severity"] as String),
+            _severityHue(incident['severity'] as String),
           ),
           infoWindow: InfoWindow(
-            title: incident["title"] as String,
-            snippet: incident["type"] as String,
+            title: incident['title'] as String,
+            snippet: incident['type'] as String,
           ),
-          onTap: () => _onMarkerTapped(incident["id"] as String),
+          onTap: () => _onMarkerTapped(incident['id'] as String),
         ),
       );
     }
-
-    for (var service in _emergencyServices) {
-      final location = service["location"] as Map<String, dynamic>;
-      markers.add(
-        Marker(
-          markerId: MarkerId(service["name"] as String),
-          position: LatLng(
-            (location["lat"] as num).toDouble(),
-            (location["lng"] as num).toDouble(),
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            service["type"] == "police"
-                ? BitmapDescriptor.hueBlue
-                : BitmapDescriptor.hueGreen,
-          ),
-          infoWindow: InfoWindow(
-            title: service["name"] as String,
-            snippet: service["phone"] as String,
-          ),
-        ),
-      );
-    }
-
     setState(() => _markers = markers);
   }
 
-  void _initializeGeofencedZones() {
-    Set<Circle> zones = {};
-
-    zones.add(
-      Circle(
-        circleId: CircleId("zone_1"),
-        center: LatLng(4.7110, -74.0721),
-        radius: 500,
-        fillColor: Colors.red.withValues(alpha: 0.2),
-        strokeColor: Colors.red.withValues(alpha: 0.5),
-        strokeWidth: 2,
-      ),
-    );
-
-    zones.add(
-      Circle(
-        circleId: CircleId("zone_2"),
-        center: LatLng(4.7095, -74.0735),
-        radius: 300,
-        fillColor: Colors.orange.withValues(alpha: 0.2),
-        strokeColor: Colors.orange.withValues(alpha: 0.5),
-        strokeWidth: 2,
-      ),
-    );
-
-    setState(() => _geofencedZones = zones);
-  }
-
-  double _getSeverityColor(String severity) {
+  double _severityHue(String severity) {
     switch (severity) {
-      case "critical":
+      case 'critical':
         return BitmapDescriptor.hueRed;
-      case "high":
+      case 'high':
         return BitmapDescriptor.hueOrange;
-      case "medium":
+      case 'medium':
         return BitmapDescriptor.hueYellow;
-      case "low":
+      case 'low':
         return BitmapDescriptor.hueGreen;
       default:
         return BitmapDescriptor.hueBlue;
@@ -256,7 +274,7 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
     setState(() => _selectedIncidentId = incidentId);
     _sheetController.animateTo(
       0.5,
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
   }
@@ -265,25 +283,27 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Crear Reporte de Incidente'),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Crear Reporte de Incidente'),
         content: Text(
-          '¿Desea crear un nuevo reporte en esta ubicación?\n\nLat: ${position.latitude.toStringAsFixed(4)}\nLng: ${position.longitude.toStringAsFixed(4)}',
+          '¿Desea crear un nuevo reporte en esta ubicación?\n\n'
+          'Lat: ${position.latitude.toStringAsFixed(4)}\n'
+          'Lng: ${position.longitude.toStringAsFixed(4)}',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               Navigator.of(
                 context,
                 rootNavigator: true,
               ).pushNamed('/incident-reporting');
             },
-            child: Text('Crear Reporte'),
+            child: const Text('Crear Reporte'),
           ),
         ],
       ),
@@ -291,15 +311,14 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
   }
 
   void _centerOnUserLocation() {
-    if (_currentPosition != null) {
-      HapticFeedback.lightImpact();
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-          15.0,
-        ),
-      );
-    }
+    if (_currentPosition == null) return;
+    HapticFeedback.lightImpact();
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(
+        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        15.0,
+      ),
+    );
   }
 
   void _toggleMapType() {
@@ -324,6 +343,12 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final selectedIncident = _selectedIncidentId != null
+        ? _incidents.cast<Map<String, dynamic>?>().firstWhere(
+            (inc) => inc!['id'] == _selectedIncidentId,
+            orElse: () => null,
+          )
+        : null;
 
     return Column(
       children: [
@@ -342,6 +367,27 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
                   'Mapa de Seguridad',
                   style: theme.textTheme.titleLarge,
                 ),
+              ),
+              if (_isLoadingIncidents)
+                Padding(
+                  padding: EdgeInsets.only(right: 2.w),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              IconButton(
+                icon: CustomIconWidget(
+                  iconName: 'refresh',
+                  color: theme.colorScheme.onSurface,
+                  size: 24,
+                ),
+                onPressed: _isLoadingIncidents ? null : _loadIncidents,
+                tooltip: 'Actualizar',
               ),
               IconButton(
                 icon: CustomIconWidget(
@@ -363,7 +409,7 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          CircularProgressIndicator(),
+                          const CircularProgressIndicator(),
                           SizedBox(height: 2.h),
                           Text(
                             'Obteniendo ubicación...',
@@ -379,12 +425,11 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
                                 _currentPosition!.latitude,
                                 _currentPosition!.longitude,
                               )
-                            : LatLng(4.7110, -74.0721),
+                            : _defaultCenter,
                         zoom: 15.0,
                       ),
                       mapType: _currentMapType,
                       markers: _markers,
-                      circles: _geofencedZones,
                       myLocationEnabled: true,
                       myLocationButtonEnabled: false,
                       zoomControlsEnabled: false,
@@ -426,14 +471,14 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
                   return Container(
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.vertical(
+                      borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(16),
                       ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
-                          offset: Offset(0, -2),
+                          offset: const Offset(0, -2),
                         ),
                       ],
                     ),
@@ -450,21 +495,19 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
                           ),
                         ),
                         Expanded(
-                          child: _selectedIncidentId != null
+                          child: selectedIncident != null
                               ? IncidentMarkerPreviewWidget(
-                                  incident: _incidents.firstWhere(
-                                    (inc) => inc["id"] == _selectedIncidentId,
-                                  ),
+                                  incident: selectedIncident,
                                   scrollController: scrollController,
-                                  onClose: () => setState(
-                                    () => _selectedIncidentId = null,
-                                  ),
+                                  onClose: () =>
+                                      setState(() => _selectedIncidentId = null),
                                 )
                               : IncidentFilterSheetWidget(
                                   scrollController: scrollController,
                                   incidents: _incidents,
                                   onFilterApplied: (filters) {
                                     HapticFeedback.lightImpact();
+                                    _onFiltersApplied(filters);
                                   },
                                 ),
                         ),

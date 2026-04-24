@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
-/// Notification Section Widget
-/// Notification preferences with toggle switches
 class NotificationSectionWidget extends StatefulWidget {
   const NotificationSectionWidget({super.key});
 
@@ -21,6 +20,38 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
   bool _authorityAnnouncements = false;
   bool _soundEnabled = true;
   bool _vibrationEnabled = true;
+  String _selectedLanguage = 'es';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _proximityWarnings = prefs.getBool('notif_proximity') ?? true;
+        _communityUpdates = prefs.getBool('notif_community') ?? true;
+        _emergencyBroadcasts = prefs.getBool('notif_emergency') ?? true;
+        _authorityAnnouncements = prefs.getBool('notif_authority') ?? false;
+        _soundEnabled = prefs.getBool('notif_sound') ?? true;
+        _vibrationEnabled = prefs.getBool('notif_vibration') ?? true;
+        _selectedLanguage = prefs.getString('app_language') ?? 'es';
+      });
+    }
+  }
+
+  Future<void> _saveBool(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
+  Future<void> _saveString(String key, String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +67,6 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section Header
           Padding(
             padding: EdgeInsets.all(4.w),
             child: Text(
@@ -49,7 +79,6 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
 
           Divider(height: 1, thickness: 1),
 
-          // Alert Types
           _buildSwitchTile(
             context: context,
             icon: 'warning',
@@ -58,6 +87,7 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
             value: _proximityWarnings,
             onChanged: (value) {
               setState(() => _proximityWarnings = value);
+              _saveBool('notif_proximity', value);
             },
           ),
 
@@ -71,6 +101,7 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
             value: _communityUpdates,
             onChanged: (value) {
               setState(() => _communityUpdates = value);
+              _saveBool('notif_community', value);
             },
           ),
 
@@ -84,6 +115,7 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
             value: _emergencyBroadcasts,
             onChanged: (value) {
               setState(() => _emergencyBroadcasts = value);
+              _saveBool('notif_emergency', value);
             },
           ),
 
@@ -97,12 +129,12 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
             value: _authorityAnnouncements,
             onChanged: (value) {
               setState(() => _authorityAnnouncements = value);
+              _saveBool('notif_authority', value);
             },
           ),
 
           Divider(height: 1, thickness: 1),
 
-          // Customization Header
           Padding(
             padding: EdgeInsets.fromLTRB(4.w, 2.h, 4.w, 1.h),
             child: Text(
@@ -122,6 +154,7 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
             value: _soundEnabled,
             onChanged: (value) {
               setState(() => _soundEnabled = value);
+              _saveBool('notif_sound', value);
             },
           ),
 
@@ -135,7 +168,69 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
             value: _vibrationEnabled,
             onChanged: (value) {
               setState(() => _vibrationEnabled = value);
+              _saveBool('notif_vibration', value);
             },
+          ),
+
+          Divider(height: 1, thickness: 1, indent: 16.w),
+
+          // Language picker
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
+            child: Row(
+              children: [
+                Container(
+                  width: 10.w,
+                  height: 10.w,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: CustomIconWidget(
+                      iconName: 'language',
+                      color: theme.colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 3.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Idioma',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 0.5.h),
+                      Text(
+                        _selectedLanguage == 'es' ? 'Español' : 'English',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                DropdownButton<String>(
+                  value: _selectedLanguage,
+                  underline: const SizedBox.shrink(),
+                  items: const [
+                    DropdownMenuItem(value: 'es', child: Text('Español')),
+                    DropdownMenuItem(value: 'en', child: Text('English')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _selectedLanguage = val);
+                      _saveString('app_language', val);
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),

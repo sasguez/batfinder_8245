@@ -3,13 +3,13 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/supabase_service.dart';
-import './widgets/accessibility_section_widget.dart';
+// import './widgets/accessibility_section_widget.dart';
 import './widgets/account_section_widget.dart';
-import './widgets/app_preferences_widget.dart';
+// import './widgets/app_preferences_widget.dart';
 import './widgets/data_export_widget.dart';
-import './widgets/language_section_widget.dart';
+// import './widgets/language_section_widget.dart';
 import './widgets/notification_section_widget.dart';
-import './widgets/privacy_section_widget.dart';
+// import './widgets/privacy_section_widget.dart';
 import './widgets/profile_header_widget.dart';
 import './widgets/panic_button_settings_widget.dart';
 import './widgets/safety_section_widget.dart';
@@ -202,19 +202,19 @@ class _UserProfileSettingsState extends State<UserProfileSettings> {
                         isGoogleUser: SupabaseService.isGoogleUser,
                       ),
                       SizedBox(height: 2.h),
-                      PrivacySectionWidget(),
-                      SizedBox(height: 2.h),
+                      // PrivacySectionWidget(),
+                      // SizedBox(height: 2.h),
                       NotificationSectionWidget(),
                       SizedBox(height: 2.h),
                       SafetySectionWidget(),
                       SizedBox(height: 2.h),
                       PanicButtonSettingsWidget(),
-                      SizedBox(height: 2.h),
-                      LanguageSectionWidget(),
-                      SizedBox(height: 2.h),
-                      AccessibilitySectionWidget(),
-                      SizedBox(height: 2.h),
-                      AppPreferencesWidget(),
+                      // SizedBox(height: 2.h),
+                      // LanguageSectionWidget(),
+                      // SizedBox(height: 2.h),
+                      // AccessibilitySectionWidget(),
+                      // SizedBox(height: 2.h),
+                      // AppPreferencesWidget(),
                       SizedBox(height: 2.h),
                       VerificationSectionWidget(userData: _userData),
                       SizedBox(height: 2.h),
