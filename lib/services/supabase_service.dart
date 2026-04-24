@@ -154,6 +154,28 @@ class SupabaseService {
     }
   }
 
+  static Future<String?> uploadAvatar(String userId, Uint8List bytes) async {
+    try {
+      final fileName = '$userId/avatar.jpg';
+      await client.storage.from('avatars').uploadBinary(
+        fileName,
+        bytes,
+        fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
+      );
+      final url = client.storage.from('avatars').getPublicUrl(fileName);
+      await updateUserProfile(userId: userId, updates: {'avatar_url': url});
+      return url;
+    } catch (e) {
+      if (kDebugMode) print('❌ Upload avatar error: $e');
+      return null;
+    }
+  }
+
+  static bool get isGoogleUser {
+    final provider = currentUser?.appMetadata['provider'] as String? ?? '';
+    return provider == 'google';
+  }
+
   // =============================
   // INCIDENTS
   // =============================

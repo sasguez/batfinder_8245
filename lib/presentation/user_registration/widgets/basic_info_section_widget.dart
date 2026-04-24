@@ -5,8 +5,6 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
-/// Basic Information Section Widget
-/// Captures user's basic information including name, email, phone, and password
 class BasicInfoSectionWidget extends StatelessWidget {
   final TextEditingController fullNameController;
   final TextEditingController emailController;
@@ -28,20 +26,20 @@ class BasicInfoSectionWidget extends StatelessWidget {
   });
 
   String _getPasswordStrengthText() {
-    if (passwordStrength == 0.0) return 'Weak';
-    if (passwordStrength <= 0.25) return 'Weak';
-    if (passwordStrength <= 0.5) return 'Fair';
-    if (passwordStrength <= 0.75) return 'Good';
-    return 'Strong';
+    if (passwordStrength == 0.0) return 'Débil';
+    if (passwordStrength <= 0.25) return 'Débil';
+    if (passwordStrength <= 0.5) return 'Regular';
+    if (passwordStrength <= 0.75) return 'Buena';
+    return 'Fuerte';
   }
 
   Color _getPasswordStrengthColor(BuildContext context) {
     final theme = Theme.of(context);
     if (passwordStrength == 0.0) return theme.colorScheme.error;
     if (passwordStrength <= 0.25) return theme.colorScheme.error;
-    if (passwordStrength <= 0.5) return Color(0xFFF57C00);
-    if (passwordStrength <= 0.75) return Color(0xFFFFD700);
-    return Color(0xFF2E7D32);
+    if (passwordStrength <= 0.5) return theme.colorScheme.secondary;
+    if (passwordStrength <= 0.75) return theme.colorScheme.tertiary;
+    return theme.colorScheme.primary;
   }
 
   @override
@@ -52,21 +50,20 @@ class BasicInfoSectionWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Basic Information',
+          'Información Básica',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
         SizedBox(height: 2.h),
 
-        // Full Name Field
         TextFormField(
           controller: fullNameController,
           decoration: InputDecoration(
-            labelText: 'Full Name',
-            hintText: 'Enter your full name',
+            labelText: 'Nombre Completo',
+            hintText: 'Ingresa tu nombre completo',
             prefixIcon: Padding(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               child: CustomIconWidget(
                 iconName: 'person',
                 color: theme.colorScheme.onSurfaceVariant,
@@ -79,24 +76,23 @@ class BasicInfoSectionWidget extends StatelessWidget {
           textCapitalization: TextCapitalization.words,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please enter your full name';
+              return 'Por favor ingresa tu nombre completo';
             }
             if (value.length < 3) {
-              return 'Name must be at least 3 characters';
+              return 'El nombre debe tener al menos 3 caracteres';
             }
             return null;
           },
         ),
         SizedBox(height: 2.h),
 
-        // Email Field
         TextFormField(
           controller: emailController,
           decoration: InputDecoration(
-            labelText: 'Email',
-            hintText: 'example@email.com',
+            labelText: 'Correo Electrónico',
+            hintText: 'ejemplo@correo.com',
             prefixIcon: Padding(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               child: CustomIconWidget(
                 iconName: 'email',
                 color: theme.colorScheme.onSurfaceVariant,
@@ -108,33 +104,24 @@ class BasicInfoSectionWidget extends StatelessWidget {
           keyboardType: TextInputType.emailAddress,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please enter your email';
+              return 'Por favor ingresa tu correo electrónico';
             }
             final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
             if (!emailRegex.hasMatch(value)) {
-              return 'Please enter a valid email';
-            }
-            // Colombian domain validation (optional)
-            final colombianDomains = ['.co', '.com.co', '.gov.co', '.edu.co'];
-            final hasColombian = colombianDomains.any(
-              (domain) => value.endsWith(domain),
-            );
-            if (!hasColombian && value.contains('@')) {
-              // Allow international emails but show warning
+              return 'Por favor ingresa un correo válido';
             }
             return null;
           },
         ),
         SizedBox(height: 2.h),
 
-        // Phone Number Field
         TextFormField(
           controller: phoneController,
           decoration: InputDecoration(
-            labelText: 'Phone Number',
+            labelText: 'Teléfono',
             hintText: '+57 300 123 4567',
             prefixIcon: Padding(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               child: CustomIconWidget(
                 iconName: 'phone',
                 color: theme.colorScheme.onSurfaceVariant,
@@ -149,25 +136,24 @@ class BasicInfoSectionWidget extends StatelessWidget {
           ],
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please enter your phone number';
+              return 'Por favor ingresa tu número de teléfono';
             }
             final cleanNumber = value.replaceAll(RegExp(r'[\s+]'), '');
             if (cleanNumber.length < 10) {
-              return 'Please enter a valid Colombian phone number';
+              return 'Por favor ingresa un número colombiano válido';
             }
             return null;
           },
         ),
         SizedBox(height: 2.h),
 
-        // Password Field
         TextFormField(
           controller: passwordController,
           decoration: InputDecoration(
-            labelText: 'Password',
-            hintText: 'Create a strong password',
+            labelText: 'Contraseña',
+            hintText: 'Crea una contraseña segura',
             prefixIcon: Padding(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               child: CustomIconWidget(
                 iconName: 'lock',
                 color: theme.colorScheme.onSurfaceVariant,
@@ -187,17 +173,16 @@ class BasicInfoSectionWidget extends StatelessWidget {
           textInputAction: TextInputAction.done,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please enter a password';
+              return 'Por favor ingresa una contraseña';
             }
             if (value.length < 8) {
-              return 'Password must be at least 8 characters';
+              return 'La contraseña debe tener al menos 8 caracteres';
             }
             return null;
           },
         ),
         SizedBox(height: 1.h),
 
-        // Password Strength Indicator
         passwordController.text.isNotEmpty
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,14 +215,14 @@ class BasicInfoSectionWidget extends StatelessWidget {
                   ),
                   SizedBox(height: 0.5.h),
                   Text(
-                    'Use 8+ characters with uppercase, numbers, and symbols',
+                    'Usa 8+ caracteres con mayúsculas, números y símbolos',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
               )
-            : SizedBox.shrink(),
+            : const SizedBox.shrink(),
       ],
     );
   }

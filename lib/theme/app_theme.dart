@@ -77,8 +77,8 @@ class AppTheme {
   // Colores de tarjeta y diálogo
   static const Color cardLight = Color(0xFFEDE9FF);
   static const Color cardDark = Color(0xFF211B35);
-  static const Color dialogLight = Color(0xFF4B0082);
-  static const Color dialogDark = Color(0xFF4B0082);
+  static const Color dialogLight = Color(0xFFFFFFFF);
+  static const Color dialogDark = Color(0xFF2D2048);
 
   // Colores de sombra
   static const Color shadowLight = Color(0x266B4FBF); // Sombra púrpura 15%
@@ -172,52 +172,63 @@ class AppTheme {
       elevation: 4.0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
     ),
+    splashColor: primaryLight.withValues(alpha: 0.15),
+    highlightColor: primaryLight.withValues(alpha: 0.08),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         foregroundColor: onPrimaryLight,
         backgroundColor: primaryLight,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        elevation: 3.0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        textStyle: GoogleFonts.roboto(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 1.25,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+        textStyle: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 1.25),
         minimumSize: Size(88, 48),
+      ).copyWith(
+        elevation: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return 0;
+          if (states.contains(WidgetState.pressed)) return 0;
+          if (states.contains(WidgetState.hovered)) return 6;
+          return 4;
+        }),
+        shadowColor: WidgetStateProperty.all(primaryLight.withValues(alpha: 0.45)),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return Colors.black.withValues(alpha: 0.14);
+          if (states.contains(WidgetState.hovered)) return Colors.black.withValues(alpha: 0.05);
+          return null;
+        }),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: primaryLight,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        side: BorderSide(color: primaryLight, width: 1.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        textStyle: GoogleFonts.roboto(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 1.25,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        textStyle: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 1.25),
         minimumSize: Size(88, 48),
+      ).copyWith(
+        side: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return BorderSide(color: primaryLight, width: 2.5);
+          return BorderSide(color: primaryLight, width: 1.5);
+        }),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return primaryLight.withValues(alpha: 0.18);
+          if (states.contains(WidgetState.hovered)) return primaryLight.withValues(alpha: 0.07);
+          return null;
+        }),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: primaryLight,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        textStyle: GoogleFonts.roboto(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 1.25,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        textStyle: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 1.25),
         minimumSize: Size(88, 48),
+      ).copyWith(
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return primaryLight.withValues(alpha: 0.20);
+          if (states.contains(WidgetState.hovered)) return primaryLight.withValues(alpha: 0.08);
+          return null;
+        }),
       ),
     ),
     textTheme: _buildTextTheme(isLight: true),
@@ -444,52 +455,63 @@ class AppTheme {
       elevation: 4.0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
     ),
+    splashColor: primaryDark.withValues(alpha: 0.18),
+    highlightColor: primaryDark.withValues(alpha: 0.10),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         foregroundColor: onPrimaryDark,
         backgroundColor: primaryDark,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        elevation: 2.0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        textStyle: GoogleFonts.roboto(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 1.25,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        textStyle: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 1.25),
         minimumSize: Size(88, 48),
+      ).copyWith(
+        elevation: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return 0;
+          if (states.contains(WidgetState.pressed)) return 0;
+          if (states.contains(WidgetState.hovered)) return 6;
+          return 4;
+        }),
+        shadowColor: WidgetStateProperty.all(primaryDark.withValues(alpha: 0.5)),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return Colors.white.withValues(alpha: 0.12);
+          if (states.contains(WidgetState.hovered)) return Colors.white.withValues(alpha: 0.05);
+          return null;
+        }),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: primaryDark,
         padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        side: BorderSide(color: primaryDark, width: 1.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        textStyle: GoogleFonts.roboto(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 1.25,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        textStyle: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 1.25),
         minimumSize: Size(88, 48),
+      ).copyWith(
+        side: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return BorderSide(color: primaryDark, width: 2.5);
+          return BorderSide(color: primaryDark, width: 1.5);
+        }),
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return primaryDark.withValues(alpha: 0.20);
+          if (states.contains(WidgetState.hovered)) return primaryDark.withValues(alpha: 0.08);
+          return null;
+        }),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: primaryDark,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        textStyle: GoogleFonts.roboto(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 1.25,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        textStyle: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 1.25),
         minimumSize: Size(88, 48),
+      ).copyWith(
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) return primaryDark.withValues(alpha: 0.22);
+          if (states.contains(WidgetState.hovered)) return primaryDark.withValues(alpha: 0.09);
+          return null;
+        }),
       ),
     ),
     textTheme: _buildTextTheme(isLight: false),

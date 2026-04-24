@@ -1,18 +1,97 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../services/supabase_service.dart';
 
-/// Profile Header Widget
-/// Displays user avatar, name, role badge, and reputation score
-class ProfileHeaderWidget extends StatelessWidget {
+class ProfileHeaderWidget extends StatefulWidget {
   final Map<String, dynamic> userData;
 
   const ProfileHeaderWidget({super.key, required this.userData});
 
   @override
+  State<ProfileHeaderWidget> createState() => _ProfileHeaderWidgetState();
+}
+
+class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
+  bool _isUploading = false;
+  String? _uploadedAvatarUrl;
+
+  Future<void> _handleAvatarEdit() async {
+    final theme = Theme.of(context);
+
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: CustomIconWidget(
+                iconName: 'camera_alt',
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+              title: const Text('Tomar Foto'),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.pop(ctx, ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: CustomIconWidget(
+                iconName: 'photo_library',
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
+              title: const Text('Elegir de la Galería'),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.pop(ctx, ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    final picker = ImagePicker();
+    final photo = await picker.pickImage(source: source, imageQuality: 80);
+    if (photo == null || !mounted) return;
+
+    final userId = SupabaseService.currentUserId;
+    if (userId == null) return;
+
+    setState(() => _isUploading = true);
+    try {
+      final bytes = await photo.readAsBytes();
+      final url = await SupabaseService.uploadAvatar(userId, bytes);
+      if (mounted && url != null) {
+        HapticFeedback.mediumImpact();
+        setState(() => _uploadedAvatarUrl = url);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error al subir la foto. Intenta de nuevo.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final avatarUrl = _uploadedAvatarUrl ?? widget.userData['avatar'] as String;
 
     return Container(
       width: double.infinity,
@@ -23,7 +102,6 @@ class ProfileHeaderWidget extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Avatar with edit button
           Stack(
             children: [
               Container(
@@ -37,35 +115,42 @@ class ProfileHeaderWidget extends StatelessWidget {
                   ),
                 ),
                 child: ClipOval(
-                  child: CustomImageWidget(
-                    imageUrl: userData["avatar"] as String,
-                    width: 25.w,
-                    height: 25.w,
-                    fit: BoxFit.cover,
-                    semanticLabel: userData["semanticLabel"] as String,
-                  ),
+                  child: _isUploading
+                      ? Container(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        )
+                      : CustomImageWidget(
+                          imageUrl: avatarUrl,
+                          width: 25.w,
+                          height: 25.w,
+                          fit: BoxFit.cover,
+                          semanticLabel: widget.userData['semanticLabel'] as String,
+                        ),
                 ),
               ),
               Positioned(
                 bottom: 0,
                 right: 0,
                 child: GestureDetector(
-                  onTap: () {
-                    // Edit avatar functionality
-                  },
+                  onTap: _isUploading ? null : _handleAvatarEdit,
                   child: Container(
                     width: 8.w,
                     height: 8.w,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
+                      color: _isUploading
+                          ? theme.colorScheme.onSurfaceVariant
+                          : theme.colorScheme.primary,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: theme.colorScheme.surface,
-                        width: 2,
-                      ),
+                      border: Border.all(color: theme.colorScheme.surface, width: 2),
                     ),
                     child: CustomIconWidget(
-                      iconName: 'edit',
+                      iconName: _isUploading ? 'hourglass_empty' : 'camera_alt',
                       color: theme.colorScheme.onPrimary,
                       size: 16,
                     ),
@@ -77,17 +162,13 @@ class ProfileHeaderWidget extends StatelessWidget {
 
           SizedBox(height: 2.h),
 
-          // Name
           Text(
-            userData["name"] as String,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            widget.userData['name'] as String,
+            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
 
           SizedBox(height: 1.h),
 
-          // Role Badge
           Container(
             padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.5.h),
             decoration: BoxDecoration(
@@ -104,7 +185,7 @@ class ProfileHeaderWidget extends StatelessWidget {
                 ),
                 SizedBox(width: 1.w),
                 Text(
-                  userData["role"] as String,
+                  widget.userData['role'] as String,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.secondary,
                     fontWeight: FontWeight.w500,
@@ -116,7 +197,6 @@ class ProfileHeaderWidget extends StatelessWidget {
 
           SizedBox(height: 2.h),
 
-          // Reputation Score
           Container(
             padding: EdgeInsets.all(3.w),
             decoration: BoxDecoration(
@@ -126,14 +206,10 @@ class ProfileHeaderWidget extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CustomIconWidget(
-                  iconName: 'star',
-                  color: Colors.amber,
-                  size: 24,
-                ),
+                CustomIconWidget(iconName: 'star', color: Colors.amber, size: 24),
                 SizedBox(width: 2.w),
                 Text(
-                  '${userData["reputationScore"]}',
+                  '${widget.userData["reputationScore"]}',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: theme.colorScheme.primary,
@@ -152,9 +228,8 @@ class ProfileHeaderWidget extends StatelessWidget {
 
           SizedBox(height: 1.h),
 
-          // Total Reports
           Text(
-            '${userData["totalReports"]} reportes enviados',
+            '${widget.userData["totalReports"]} reportes enviados',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

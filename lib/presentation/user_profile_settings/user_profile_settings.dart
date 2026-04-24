@@ -197,7 +197,10 @@ class _UserProfileSettingsState extends State<UserProfileSettings> {
                     children: [
                       ProfileHeaderWidget(userData: _userData),
                       SizedBox(height: 2.h),
-                      AccountSectionWidget(userData: _userData),
+                      AccountSectionWidget(
+                        userData: _userData,
+                        isGoogleUser: SupabaseService.isGoogleUser,
+                      ),
                       SizedBox(height: 2.h),
                       PrivacySectionWidget(),
                       SizedBox(height: 2.h),

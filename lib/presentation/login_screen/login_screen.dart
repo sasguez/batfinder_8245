@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
 import '../../services/supabase_service.dart';
-import './widgets/biometric_auth_button.dart';
 import './widgets/login_form_fields.dart';
 import './widgets/remember_me_toggle.dart';
 import './widgets/social_login_buttons.dart';
@@ -21,9 +23,24 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isOAuthFlow = false;
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = SupabaseService.authStateChanges.listen((event) {
+      if (event.event == AuthChangeEvent.signedIn && mounted && _isOAuthFlow) {
+        _isOAuthFlow = false;
+        Navigator.of(context, rootNavigator: true)
+            .pushReplacementNamed(AppRoutes.alertDashboard);
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -48,12 +65,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _handleBiometricAuth() {
-    HapticFeedback.mediumImpact();
-    Navigator.of(context, rootNavigator: true)
-        .pushReplacementNamed(AppRoutes.alertDashboard);
   }
 
   void _handleEmergencyAccess() {
@@ -94,19 +105,30 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleGoogleLogin() async {
+    setState(() {
+      _isLoading = true;
+      _isOAuthFlow = true;
+    });
     try {
-      setState(() => _isLoading = true);
       await SupabaseService.signInWithGoogle();
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true)
-            .pushReplacementNamed(AppRoutes.alertDashboard);
-      }
+      // El browser se abrió — el stream listener de authStateChanges maneja la navegación
+      // Auto-reset si el usuario cancela el OAuth después de 60s
+      Future.delayed(const Duration(seconds: 60), () {
+        if (mounted && _isLoading && _isOAuthFlow) {
+          setState(() {
+            _isLoading = false;
+            _isOAuthFlow = false;
+          });
+        }
+      });
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isOAuthFlow = false;
+        });
         _showErrorDialog('Error al conectar con Google. Intenta de nuevo.');
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -203,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 2.h),
                     ),
-                    child: _isLoading
+                    child: _isLoading && !_isOAuthFlow
                         ? SizedBox(
                             width: 5.w,
                             height: 5.w,
@@ -223,8 +245,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 SizedBox(height: 1.h),
 
-                BiometricAuthButton(onAuthenticated: _handleBiometricAuth),
-                SizedBox(height: 2.h),
+                // Biometric auth temporarily disabled — future feature
+                // BiometricAuthButton(onAuthenticated: _handleBiometricAuth),
+                // SizedBox(height: 2.h),
 
                 // Acceso de emergencia
                 SizedBox(
