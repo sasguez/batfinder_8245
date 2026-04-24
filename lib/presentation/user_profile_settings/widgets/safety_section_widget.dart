@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../services/supabase_service.dart';
@@ -26,6 +27,23 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
   void initState() {
     super.initState();
     _loadContacts();
+    _loadSafetyPreferences();
+  }
+
+  Future<void> _loadSafetyPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _locationSharingDuration =
+            prefs.getString('safety_location_duration') ?? '30 minutos';
+        _geofenceRadius = prefs.getString('safety_geofence_radius') ?? '500m';
+      });
+    }
+  }
+
+  Future<void> _saveSafetyPref(String key, String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, value);
   }
 
   Future<void> _loadContacts() async {
@@ -448,6 +466,7 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
           onChanged: (v) {
             if (v != null) {
               setState(() => _locationSharingDuration = v);
+              _saveSafetyPref('safety_location_duration', v);
               Navigator.pop(ctx);
             }
           },
@@ -473,6 +492,7 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
           onChanged: (v) {
             if (v != null) {
               setState(() => _geofenceRadius = v);
+              _saveSafetyPref('safety_geofence_radius', v);
               Navigator.pop(ctx);
             }
           },

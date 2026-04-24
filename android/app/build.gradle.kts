@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,11 +7,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Lee local.properties para inyectar claves sin exponerlas en git
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { stream -> localProperties.load(stream) }
+}
+
 android {
     namespace = "com.example.batfinder"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
-    //!SECTION test code
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -21,14 +29,15 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.batfinder"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Inyecta la API key de Google Maps desde local.properties al AndroidManifest
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] =
+            localProperties.getProperty("GOOGLE_MAPS_API_KEY", "")
     }
 
     buildTypes {
