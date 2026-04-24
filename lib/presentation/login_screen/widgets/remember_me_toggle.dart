@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
@@ -65,7 +66,7 @@ class _RememberMeToggleState extends State<RememberMeToggle> {
           child: Text(
             'Recordarme en este dispositivo',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
+              color: Colors.white70,
             ),
           ),
         ),

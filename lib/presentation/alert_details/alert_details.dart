@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/action_buttons_widget.dart';
 import './widgets/comments_section_widget.dart';
@@ -22,110 +23,180 @@ class AlertDetails extends StatefulWidget {
 }
 
 class _AlertDetailsState extends State<AlertDetails> {
-  final Map<String, dynamic> _alertData = {
-    'id': 1,
-    'type': 'Theft',
-    'timestamp': DateTime.now().subtract(Duration(hours: 2)),
-    'location': 'Carrera 7 #32-16, Bogotá',
-    'distance': 1.2,
-    'latitude': 4.7110,
-    'longitude': -74.0721,
-    'description':
-        'Se reportó el robo de un celular a mano armada cerca de la estación de TransMilenio. El sospechoso huyó hacia el norte en una motocicleta roja. Las autoridades fueron notificadas y están patrullando el área.',
+  bool _isLoading = true;
+  String _loadError = '';
+  bool _didLoad = false;
+
+  Map<String, dynamic> _alertData = {};
+  List<Map<String, dynamic>> _mediaItems = [];
+  Map<String, dynamic> _reporterData = {};
+  List<Map<String, dynamic>> _relatedAlerts = [];
+  List<Map<String, dynamic>> _comments = [];
+
+  static const Map<String, String> _typeLabels = {
+    'theft': 'Robo',
+    'assault': 'Agresión',
+    'suspicious_activity': 'Actividad Sospechosa',
+    'emergency': 'Emergencia',
+    'accident': 'Accidente',
+    'fire': 'Incendio',
+    'vandalism': 'Vandalismo',
+    'other': 'Otro',
   };
 
-  final List<Map<String, dynamic>> _mediaItems = [
-    {
-      'type': 'image',
-      'url': 'https://images.unsplash.com/photo-1697420985296-c8be632cb740',
-      'semanticLabel':
-          'Street view showing the incident location near TransMilenio station with people walking',
-    },
-    {
-      'type': 'image',
-      'url':
-          'https://images.unsplash.com/photo-1632927062611-68037fee9f2f',
-      'semanticLabel':
-          'Close-up photo of red motorcycle similar to suspect vehicle parked on street',
-    },
-    {
-      'type': 'video',
-      'url': 'https://images.unsplash.com/photo-1591732727204-5a9e1c718dc7',
-      'semanticLabel':
-          'Security camera footage thumbnail showing crowded street intersection',
-    },
-  ];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didLoad) return;
+    _didLoad = true;
 
-  final Map<String, dynamic> _reporterData = {
-    'isAnonymous': false,
-    'isVerified': true,
-    'name': 'Carlos Rodríguez',
-    'avatar':
-        'https://img.rocket.new/generatedImages/rocket_gen_img_1137886c8-1763293866701.png',
-    'avatarSemanticLabel':
-        'Profile photo of Hispanic man with short black hair wearing blue shirt',
-    'reputationScore': 87,
-  };
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      final id = args['id'];
+      if (id != null) {
+        _loadIncident(id.toString());
+      } else {
+        setState(() {
+          _isLoading = false;
+          _loadError = 'Incidente no encontrado';
+        });
+      }
+    } else {
+      setState(() {
+        _isLoading = false;
+        _loadError = 'No se recibieron datos del incidente';
+      });
+    }
+  }
 
-  final List<Map<String, dynamic>> _relatedAlerts = [
-    {
-      'type': 'Suspicious Activity',
-      'location': 'Calle 26 #13-19',
-      'timestamp': DateTime.now().subtract(Duration(hours: 5)),
-      'distance': 0.8,
-    },
-    {
-      'type': 'Theft',
-      'location': 'Carrera 10 #27-51',
-      'timestamp': DateTime.now().subtract(Duration(hours: 8)),
-      'distance': 1.5,
-    },
-    {
-      'type': 'Violence',
-      'location': 'Avenida Jiménez #7-65',
-      'timestamp': DateTime.now().subtract(Duration(days: 1)),
-      'distance': 2.1,
-    },
-  ];
+  Future<void> _loadIncident(String id) async {
+    try {
+      final data = await SupabaseService.getIncidentDetails(id);
+      if (!mounted) return;
 
-  final List<Map<String, dynamic>> _comments = [
-    {
-      'isAnonymous': false,
-      'authorName': 'María González',
-      'authorAvatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_10cbd76d2-1763294189634.png',
-      'authorAvatarSemanticLabel':
-          'Profile photo of Hispanic woman with long brown hair wearing red top',
-      'content':
-          'Vi el mismo sospechoso cerca de la Universidad Nacional hace una hora. Tengan cuidado en esa zona.',
-      'timestamp': DateTime.now().subtract(Duration(minutes: 45)),
-    },
-    {
-      'isAnonymous': true,
-      'content':
-          'Las autoridades ya están patrullando el área. Gracias por reportar esto rápidamente.',
-      'timestamp': DateTime.now().subtract(Duration(hours: 1)),
-    },
-    {
-      'isAnonymous': false,
-      'authorName': 'Juan Pérez',
-      'authorAvatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_1d7a6ad8f-1763293689395.png',
-      'authorAvatarSemanticLabel':
-          'Profile photo of Hispanic man with glasses and beard wearing gray sweater',
-      'content':
-          'Recomiendo evitar esa zona después de las 6 PM. Ha habido varios incidentes similares esta semana.',
-      'timestamp': DateTime.now().subtract(Duration(hours: 1, minutes: 30)),
-    },
-  ];
+      if (data == null) {
+        setState(() {
+          _isLoading = false;
+          _loadError = 'No se encontró el incidente';
+        });
+        return;
+      }
+
+      final incidentType = data['incident_type'] as String? ?? 'other';
+      final createdAt = data['created_at'] as String?;
+
+      setState(() {
+        _alertData = {
+          'id': data['id'],
+          'type': _typeLabels[incidentType] ?? 'Incidente',
+          'timestamp':
+              createdAt != null ? DateTime.parse(createdAt) : DateTime.now(),
+          'location': data['location_address'] ?? 'Ubicación no especificada',
+          'distance': 'N/A',
+          'latitude': (data['latitude'] as num?)?.toDouble() ?? 4.7110,
+          'longitude': (data['longitude'] as num?)?.toDouble() ?? -74.0721,
+          'description': data['description'] ?? '',
+          'incident_type': incidentType,
+          'severity': data['severity'] ?? 'medium',
+          'status': data['status'] ?? 'active',
+          'is_anonymous': data['is_anonymous'] ?? false,
+        };
+
+        final media = data['incident_media'] as List? ?? [];
+        _mediaItems = media
+            .map<Map<String, dynamic>>((m) => {
+                  'type':
+                      (m['media_type'] as String?) == 'video' ? 'video' : 'image',
+                  'url': m['url'] as String? ?? '',
+                  'semanticLabel':
+                      m['description'] as String? ?? 'Imagen del incidente',
+                })
+            .toList();
+
+        final reporter = data['reporter'] as Map<String, dynamic>?;
+        _reporterData = {
+          'isAnonymous': data['is_anonymous'] ?? false,
+          'isVerified':
+              (reporter?['verification_status'] as String?) == 'verified',
+          'name': reporter?['full_name'] as String? ?? 'Usuario Anónimo',
+          'avatar': reporter?['avatar_url'] as String? ?? '',
+          'avatarSemanticLabel': 'Foto de perfil del reportero',
+          'reputationScore': 0,
+        };
+
+        final commentsList = data['incident_comments'] as List? ?? [];
+        _comments = commentsList
+            .map<Map<String, dynamic>>((c) {
+              final commenter = c['commenter'] as Map<String, dynamic>?;
+              final commentAt = c['created_at'] as String?;
+              return {
+                'isAnonymous': commenter == null,
+                'authorName':
+                    commenter?['full_name'] as String? ?? 'Anónimo',
+                'authorAvatar':
+                    commenter?['avatar_url'] as String? ?? '',
+                'authorAvatarSemanticLabel': 'Foto de perfil',
+                'content': c['comment'] as String? ?? '',
+                'timestamp': commentAt != null
+                    ? DateTime.parse(commentAt)
+                    : DateTime.now(),
+              };
+            })
+            .toList();
+
+        _relatedAlerts = [];
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _loadError = 'Error al cargar el incidente';
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Detalles del Incidente')),
+        body: Center(
+          child: CircularProgressIndicator(color: theme.colorScheme.primary),
+        ),
+      );
+    }
+
+    if (_loadError.isNotEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Detalles del Incidente')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomIconWidget(
+                iconName: 'error_outline',
+                color: theme.colorScheme.error,
+                size: 48,
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                _loadError,
+                style: theme.textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Alert Details'),
+        title: const Text('Detalles del Incidente'),
         actions: [
           IconButton(
             icon: CustomIconWidget(
@@ -135,10 +206,10 @@ class _AlertDetailsState extends State<AlertDetails> {
             ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Share functionality activated')),
+                const SnackBar(content: Text('Compartir disponible próximamente')),
               );
             },
-            tooltip: 'Share Alert',
+            tooltip: 'Compartir',
           ),
         ],
       ),
@@ -148,13 +219,14 @@ class _AlertDetailsState extends State<AlertDetails> {
           children: [
             IncidentHeaderWidget(alertData: _alertData),
             IncidentMapWidget(alertData: _alertData),
-            MediaGalleryWidget(mediaItems: _mediaItems),
+            if (_mediaItems.isNotEmpty) MediaGalleryWidget(mediaItems: _mediaItems),
             IncidentDescriptionWidget(
-              description: _alertData['description'] ?? '',
+              description: _alertData['description'] as String? ?? '',
             ),
             ReporterInfoWidget(reporterData: _reporterData),
-            VerificationSectionWidget(initialConfirms: 42, initialDisputes: 3),
-            RelatedAlertsWidget(relatedAlerts: _relatedAlerts),
+            VerificationSectionWidget(initialConfirms: 0, initialDisputes: 0),
+            if (_relatedAlerts.isNotEmpty)
+              RelatedAlertsWidget(relatedAlerts: _relatedAlerts),
             ActionButtonsWidget(alertData: _alertData, isAuthority: false),
             CommentsSectionWidget(comments: _comments),
             EmergencyContactWidget(),

@@ -26,19 +26,19 @@ class SocialLoginButtons extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Divider(color: theme.colorScheme.outline, thickness: 1),
+              child: Divider(color: Colors.white24, thickness: 1),
             ),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 4.w),
               child: Text(
                 'O continúa con',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                  color: Colors.white60,
                 ),
               ),
             ),
             Expanded(
-              child: Divider(color: theme.colorScheme.outline, thickness: 1),
+              child: Divider(color: Colors.white24, thickness: 1),
             ),
           ],
         ),
@@ -64,12 +64,12 @@ class SocialLoginButtons extends StatelessWidget {
                 label: Text(
                   'Google',
                   style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onSurface,
+                    color: Colors.white,
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: 1.8.h),
-                  side: BorderSide(color: theme.colorScheme.outline, width: 1),
+                  side: const BorderSide(color: Colors.white30, width: 1),
                 ),
               ),
             ),
@@ -93,12 +93,12 @@ class SocialLoginButtons extends StatelessWidget {
                 label: Text(
                   'Facebook',
                   style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onSurface,
+                    color: Colors.white,
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: 1.8.h),
-                  side: BorderSide(color: theme.colorScheme.outline, width: 1),
+                  side: const BorderSide(color: Colors.white30, width: 1),
                 ),
               ),
             ),

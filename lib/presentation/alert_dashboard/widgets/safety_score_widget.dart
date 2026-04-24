@@ -8,12 +8,14 @@ class SafetyScoreWidget extends StatelessWidget {
   final int score;
   final String location;
   final VoidCallback onTap;
+  final Map<String, dynamic> stats;
 
   const SafetyScoreWidget({
     super.key,
     required this.score,
     required this.location,
     required this.onTap,
+    this.stats = const {},
   });
 
   Color _getScoreColor(int score, ThemeData theme) {
@@ -177,8 +179,8 @@ class SafetyScoreWidget extends StatelessWidget {
                   _buildStatItem(
                     context,
                     icon: 'trending_down',
-                    label: 'Incidentes',
-                    value: '12',
+                    label: 'Activos',
+                    value: '${(stats['active_alerts'] as num?)?.toInt() ?? 0}',
                     color: Color(0xFFDC2626),
                   ),
                   Container(
@@ -188,9 +190,10 @@ class SafetyScoreWidget extends StatelessWidget {
                   ),
                   _buildStatItem(
                     context,
-                    icon: 'people',
-                    label: 'Usuarios Activos',
-                    value: '847',
+                    icon: 'verified',
+                    label: 'Verificados',
+                    value:
+                        '${(stats['verified_alerts'] as num?)?.toInt() ?? 0}',
                     color: theme.colorScheme.primary,
                   ),
                   Container(
@@ -200,9 +203,10 @@ class SafetyScoreWidget extends StatelessWidget {
                   ),
                   _buildStatItem(
                     context,
-                    icon: 'verified_user',
-                    label: 'Zonas Seguras',
-                    value: '5',
+                    icon: 'check_circle',
+                    label: 'Resueltos',
+                    value:
+                        '${(stats['resolved_alerts'] as num?)?.toInt() ?? 0}',
                     color: Color(0xFF2E7D32),
                   ),
                 ],

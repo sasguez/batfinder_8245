@@ -6,19 +6,19 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   AppTheme._();
 
-  // Paleta Moderna Azul/Púrpura - Especificaciones de Color
+  // Paleta Dark Purple — inspirada en logo radar + murciélago
   static const Color primaryLight = Color(
-    0xFF2563EB,
-  ); // Índigo vibrante para acciones principales
+    0xFF6B4FBF,
+  ); // Púrpura del murciélago
   static const Color primaryVariantLight = Color(
-    0xFF4F46E5,
-  ); // Variante índigo más oscuro
+    0xFF4A2E9E,
+  ); // Púrpura profundo
   static const Color secondaryLight = Color(
-    0xFF14B8A6,
-  ); // Púrpura para elementos secundarios
-  static const Color secondaryVariantLight = Color(
     0xFF7C3AED,
-  ); // Variante púrpura más oscura
+  ); // Violeta del radar
+  static const Color secondaryVariantLight = Color(
+    0xFF5B21B6,
+  ); // Variante violeta oscura
   static const Color successLight = Color(
     0xFFF59E0B,
   ); // Verde esmeralda para estados exitosos
@@ -28,26 +28,26 @@ class AppTheme {
   static const Color errorLight = Color(
     0xFFEF4444,
   ); // Rojo para errores del sistema
-  static const Color accentLight = Color(0xFFEC4899); // Rosa para destacados
+  static const Color accentLight = Color(0xFFBDA7F5); // Punto de radar
   static const Color backgroundLight = Color(
-    0xFFF8FAFC,
-  ); // Blanco puro para fondos principales
+    0xFFF5F3FF,
+  ); // Lavanda pálida
   static const Color surfaceLight = Color(
     0xFFFFFFFF,
   ); // Blanco cálido para tarjetas
   static const Color onPrimaryLight = Color(0xFFFFFFFF);
   static const Color onSecondaryLight = Color(0xFFFFFFFF);
   static const Color onBackgroundLight = Color(
-    0xFF1F2937,
+    0xFF1E0F3C,
   ); // Casi negro para contenido primario
-  static const Color onSurfaceLight = Color(0xFF1F2937);
+  static const Color onSurfaceLight = Color(0xFF1E0F3C);
   static const Color onErrorLight = Color(0xFFFFFFFF);
 
   // Colores de tema oscuro (adaptado para uso nocturno)
   static const Color primaryDark = Color(
-    0xFF818CF8,
-  ); // Índigo más claro para modo oscuro
-  static const Color primaryVariantDark = Color(0xFF6366F1);
+    0xFF9B7FE8,
+  ); // Púrpura luminoso dark
+  static const Color primaryVariantDark = Color(0xFF7C5CC7);
   static const Color secondaryDark = Color(
     0xFFA78BFA,
   ); // Púrpura más claro para modo oscuro
@@ -61,37 +61,37 @@ class AppTheme {
   static const Color errorDark = Color(
     0xFFF87171,
   ); // Rojo más brillante para modo oscuro
-  static const Color accentDark = Color(0xFFF9A8D4);
+  static const Color accentDark = Color(0xFFD4C5FA);
   static const Color backgroundDark = Color(
-    0xFF111827,
-  ); // Fondo oscuro material
+    0xFF0D0B1A,
+  ); // Fondo negro-azul del logo
   static const Color surfaceDark = Color(
-    0xFF1F2937,
-  ); // Superficie elevada para modo oscuro
+    0xFF1A1428,
+  ); // Superficie púrpura oscuro
   static const Color onPrimaryDark = Color(0xFF000000);
   static const Color onSecondaryDark = Color(0xFFFFFFFF);
-  static const Color onBackgroundDark = Color(0xFFF9FAFB);
+  static const Color onBackgroundDark = Color(0xFFF0EEFF);
   static const Color onSurfaceDark = Color(0xFFF9FAFB);
   static const Color onErrorDark = Color(0xFF000000);
 
   // Colores de tarjeta y diálogo
-  static const Color cardLight = Color(0xFF4B0082);
-  static const Color cardDark = Color(0xFF4B0082);
+  static const Color cardLight = Color(0xFFEDE9FF);
+  static const Color cardDark = Color(0xFF211B35);
   static const Color dialogLight = Color(0xFF4B0082);
   static const Color dialogDark = Color(0xFF4B0082);
 
   // Colores de sombra
-  static const Color shadowLight = Color(0x1A000000); // 10% opacidad negro
+  static const Color shadowLight = Color(0x266B4FBF); // Sombra púrpura 15%
   static const Color shadowDark = Color(0x1AFFFFFF); // 10% opacidad blanco
 
   // Colores de divisor
-  static const Color dividerLight = Color(0xFFE5E7EB);
-  static const Color dividerDark = Color(0xFF4B5563);
+  static const Color dividerLight = Color(0xFFE5DEFF);
+  static const Color dividerDark = Color(0xFF2D2048);
 
   // Colores de texto
-  static const Color textHighEmphasisLight = Color(0xFF111827); // Casi negro
-  static const Color textMediumEmphasisLight = Color(0xFF4B5563); // Gris medio
-  static const Color textDisabledLight = Color(0xFF9AA1AE); // Gris claro
+  static const Color textHighEmphasisLight = Color(0xFF1E0F3C); // Casi negro
+  static const Color textMediumEmphasisLight = Color(0xFF5B4A7A); // Púrpura medio
+  static const Color textDisabledLight = Color(0xFFB8A9D4); // Lavanda claro
 
   static const Color textHighEmphasisDark = Color(0xFFF8FAFC);
   static const Color textMediumEmphasisDark = Color(0xFFCBD5E1);
@@ -107,7 +107,7 @@ class AppTheme {
       onPrimary: onPrimaryLight,
       primaryContainer: primaryVariantLight,
       onPrimaryContainer: onPrimaryLight,
-      secondary: Color(0xFF6366F1),
+      secondary: secondaryLight,
       onSecondary: onSecondaryLight,
       secondaryContainer: secondaryVariantLight,
       onSecondaryContainer: onSecondaryLight,

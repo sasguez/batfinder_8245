@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
           // 🚨 END CRITICAL SECTION
           debugShowCheckedModeBanner: false,
           routes: AppRoutes.routes,
-          initialRoute: AppRoutes.login, // Inicia siempre en el Splash
+          initialRoute: AppRoutes.splash,
         );
       },
     );

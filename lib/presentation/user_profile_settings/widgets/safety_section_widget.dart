@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../../core/app_export.dart';
+import '../../../services/supabase_service.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
 /// Safety Section Widget
-/// Emergency contacts and safety settings configuration
+/// Gestión de contactos de emergencia reales (Supabase) + preferencias de seguridad.
 class SafetySectionWidget extends StatefulWidget {
   const SafetySectionWidget({super.key});
 
@@ -14,22 +14,179 @@ class SafetySectionWidget extends StatefulWidget {
 }
 
 class _SafetySectionWidgetState extends State<SafetySectionWidget> {
-  String _panicButtonSensitivity = 'Media';
+  static const int _maxContacts = 5;
+
+  List<Map<String, dynamic>> _contacts = [];
+  bool _isLoading = true;
+  String? _errorMessage;
   String _locationSharingDuration = '30 minutos';
   String _geofenceRadius = '500m';
 
-  final List<Map<String, dynamic>> emergencyContacts = [
-    {
-      "name": "Carlos González",
-      "phone": "+57 300 987 6543",
-      "relation": "Esposo",
-    },
-    {
-      "name": "Ana María López",
-      "phone": "+57 301 234 5678",
-      "relation": "Hermana",
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadContacts();
+  }
+
+  Future<void> _loadContacts() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final data = await SupabaseService.getEmergencyContacts();
+      if (mounted) setState(() => _contacts = data);
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = 'Error al cargar contactos');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _showAddContactDialog() async {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final relationCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Agregar Contacto de Emergencia'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre completo',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
+                textCapitalization: TextCapitalization.words,
+              ),
+              SizedBox(height: 2.h),
+              TextFormField(
+                controller: phoneCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Teléfono',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                  hintText: '+57 300 000 0000',
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
+              ),
+              SizedBox(height: 2.h),
+              TextFormField(
+                controller: relationCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Parentesco (opcional)',
+                  prefixIcon: Icon(Icons.family_restroom_outlined),
+                  hintText: 'Ej: Esposo, Mamá, Amigo',
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.pop(ctx);
+              await _addContact(
+                name: nameCtrl.text.trim(),
+                phone: phoneCtrl.text.trim(),
+                relation: relationCtrl.text.trim(),
+              );
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addContact({
+    required String name,
+    required String phone,
+    required String relation,
+  }) async {
+    try {
+      final newContact = await SupabaseService.addEmergencyContact(
+        name: name,
+        phone: phone,
+        relation: relation,
+      );
+      if (mounted) setState(() => _contacts.add(newContact));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar contacto: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDelete(Map<String, dynamic> contact) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar contacto'),
+        content: Text(
+          '¿Eliminar a ${contact['name']} de tus contactos de emergencia?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteContact(contact);
+    }
+  }
+
+  Future<void> _deleteContact(Map<String, dynamic> contact) async {
+    try {
+      await SupabaseService.deleteEmergencyContact(contact['id'] as String);
+      if (mounted) {
+        setState(
+          () => _contacts.removeWhere((c) => c['id'] == contact['id']),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar contacto: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +202,6 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section Header
           Padding(
             padding: EdgeInsets.all(4.w),
             child: Text(
@@ -58,7 +214,7 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
 
           Divider(height: 1, thickness: 1),
 
-          // Emergency Contacts
+          // ── Contactos de emergencia ──────────────────────
           Padding(
             padding: EdgeInsets.all(4.w),
             child: Column(
@@ -74,7 +230,7 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
                       ),
                     ),
                     Text(
-                      '${emergencyContacts.length}/5',
+                      '${_contacts.length}/$_maxContacts',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -82,106 +238,57 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
                   ],
                 ),
                 SizedBox(height: 1.h),
-                ...emergencyContacts.map(
-                  (contact) => _buildContactCard(context, contact),
-                ),
+
+                if (_isLoading)
+                  Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 2.h),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else if (_errorMessage != null)
+                  _ErrorRetryRow(
+                    message: _errorMessage!,
+                    onRetry: _loadContacts,
+                  )
+                else if (_contacts.isEmpty)
+                  _EmptyContactsHint()
+                else
+                  ..._contacts.map(
+                    (contact) => _buildContactCard(context, contact),
+                  ),
+
                 SizedBox(height: 1.h),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    // Add emergency contact
-                  },
-                  icon: CustomIconWidget(
-                    iconName: 'add',
-                    color: theme.colorScheme.primary,
-                    size: 20,
+
+                if (!_isLoading && _contacts.length < _maxContacts)
+                  OutlinedButton.icon(
+                    onPressed: _showAddContactDialog,
+                    icon: CustomIconWidget(
+                      iconName: 'add',
+                      color: theme.colorScheme.primary,
+                      size: 20,
+                    ),
+                    label: const Text('Agregar Contacto'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: Size(double.infinity, 6.h),
+                    ),
                   ),
-                  label: Text('Agregar Contacto'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 6.h),
-                  ),
-                ),
               ],
-            ),
-          ),
-
-          Divider(height: 1, thickness: 1),
-
-          // Panic Button Sensitivity
-          InkWell(
-            onTap: () => _showSensitivityDialog(context),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-              child: Row(
-                children: [
-                  Container(
-                    width: 10.w,
-                    height: 10.w,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: CustomIconWidget(
-                        iconName: 'touch_app',
-                        color: theme.colorScheme.error,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 3.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Sensibilidad del Botón de Pánico',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 0.5.h),
-                        Text(
-                          _panicButtonSensitivity,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  CustomIconWidget(
-                    iconName: 'chevron_right',
-                    color: theme.colorScheme.onSurfaceVariant,
-                    size: 20,
-                  ),
-                ],
-              ),
             ),
           ),
 
           Divider(height: 1, thickness: 1, indent: 16.w),
 
-          // Location Sharing Duration
+          // ── Duración compartir ubicación ─────────────────
           InkWell(
             onTap: () => _showDurationDialog(context),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
               child: Row(
                 children: [
-                  Container(
-                    width: 10.w,
-                    height: 10.w,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: CustomIconWidget(
-                        iconName: 'schedule',
-                        color: theme.colorScheme.primary,
-                        size: 20,
-                      ),
-                    ),
+                  _SettingIcon(
+                    iconName: 'schedule',
+                    color: theme.colorScheme.primary,
                   ),
                   SizedBox(width: 3.w),
                   Expanded(
@@ -216,27 +323,16 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
 
           Divider(height: 1, thickness: 1, indent: 16.w),
 
-          // Geofence Radius
+          // ── Radio geocerca ───────────────────────────────
           InkWell(
             onTap: () => _showRadiusDialog(context),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
               child: Row(
                 children: [
-                  Container(
-                    width: 10.w,
-                    height: 10.w,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: CustomIconWidget(
-                        iconName: 'radar',
-                        color: theme.colorScheme.primary,
-                        size: 20,
-                      ),
-                    ),
+                  _SettingIcon(
+                    iconName: 'radar',
+                    color: theme.colorScheme.primary,
                   ),
                   SizedBox(width: 3.w),
                   Expanded(
@@ -273,8 +369,12 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
     );
   }
 
-  Widget _buildContactCard(BuildContext context, Map<String, dynamic> contact) {
+  Widget _buildContactCard(
+    BuildContext context,
+    Map<String, dynamic> contact,
+  ) {
     final theme = Theme.of(context);
+    final relation = contact['relation'] as String? ?? '';
 
     return Container(
       margin: EdgeInsets.only(bottom: 1.h),
@@ -307,14 +407,16 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  contact["name"] as String,
+                  contact['name'] as String,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: 0.5.h),
                 Text(
-                  '${contact["relation"]} • ${contact["phone"]}',
+                  relation.isNotEmpty
+                      ? '$relation • ${contact['phone']}'
+                      : contact['phone'] as String,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -323,9 +425,7 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
             ),
           ),
           IconButton(
-            onPressed: () {
-              // Remove contact
-            },
+            onPressed: () => _confirmDelete(contact),
             icon: CustomIconWidget(
               iconName: 'delete_outline',
               color: theme.colorScheme.error,
@@ -337,177 +437,118 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
     );
   }
 
-  void _showSensitivityDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Sensibilidad del Botón de Pánico'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildOptionTile(
-              context,
-              'Alta',
-              'Activación instantánea',
-              _panicButtonSensitivity,
-              (value) {
-                setState(() => _panicButtonSensitivity = value);
-                Navigator.pop(context);
-              },
-            ),
-            _buildOptionTile(
-              context,
-              'Media',
-              'Mantener presionado 2 segundos',
-              _panicButtonSensitivity,
-              (value) {
-                setState(() => _panicButtonSensitivity = value);
-                Navigator.pop(context);
-              },
-            ),
-            _buildOptionTile(
-              context,
-              'Baja',
-              'Mantener presionado 5 segundos',
-              _panicButtonSensitivity,
-              (value) {
-                setState(() => _panicButtonSensitivity = value);
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showDurationDialog(BuildContext context) {
+    const options = ['15 minutos', '30 minutos', '1 hora', 'Hasta cancelar'];
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Duración de Compartir Ubicación'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildOptionTile(
-              context,
-              '15 minutos',
-              '',
-              _locationSharingDuration,
-              (value) {
-                setState(() => _locationSharingDuration = value);
-                Navigator.pop(context);
-              },
-            ),
-            _buildOptionTile(
-              context,
-              '30 minutos',
-              '',
-              _locationSharingDuration,
-              (value) {
-                setState(() => _locationSharingDuration = value);
-                Navigator.pop(context);
-              },
-            ),
-            _buildOptionTile(context, '1 hora', '', _locationSharingDuration, (
-              value,
-            ) {
-              setState(() => _locationSharingDuration = value);
-              Navigator.pop(context);
-            }),
-            _buildOptionTile(
-              context,
-              'Hasta cancelar',
-              '',
-              _locationSharingDuration,
-              (value) {
-                setState(() => _locationSharingDuration = value);
-                Navigator.pop(context);
-              },
-            ),
-          ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('Duración de Compartir Ubicación'),
+        content: RadioGroup<String>(
+          groupValue: _locationSharingDuration,
+          onChanged: (v) {
+            if (v != null) {
+              setState(() => _locationSharingDuration = v);
+              Navigator.pop(ctx);
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: options
+                .map((o) => RadioListTile<String>(value: o, title: Text(o)))
+                .toList(),
+          ),
         ),
       ),
     );
   }
 
   void _showRadiusDialog(BuildContext context) {
+    const options = ['100m', '500m', '1km', '2km'];
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Radio de Geocerca'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildOptionTile(context, '100m', '', _geofenceRadius, (value) {
-              setState(() => _geofenceRadius = value);
-              Navigator.pop(context);
-            }),
-            _buildOptionTile(context, '500m', '', _geofenceRadius, (value) {
-              setState(() => _geofenceRadius = value);
-              Navigator.pop(context);
-            }),
-            _buildOptionTile(context, '1km', '', _geofenceRadius, (value) {
-              setState(() => _geofenceRadius = value);
-              Navigator.pop(context);
-            }),
-            _buildOptionTile(context, '2km', '', _geofenceRadius, (value) {
-              setState(() => _geofenceRadius = value);
-              Navigator.pop(context);
-            }),
-          ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('Radio de Geocerca'),
+        content: RadioGroup<String>(
+          groupValue: _geofenceRadius,
+          onChanged: (v) {
+            if (v != null) {
+              setState(() => _geofenceRadius = v);
+              Navigator.pop(ctx);
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: options
+                .map((o) => RadioListTile<String>(value: o, title: Text(o)))
+                .toList(),
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildOptionTile(
-    BuildContext context,
-    String value,
-    String subtitle,
-    String currentValue,
-    ValueChanged<String> onChanged,
-  ) {
+// ── Widgets auxiliares locales ──────────────────────────────────
+
+class _SettingIcon extends StatelessWidget {
+  final String iconName;
+  final Color color;
+  const _SettingIcon({required this.iconName, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10.w,
+      height: 10.w,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: CustomIconWidget(iconName: iconName, color: color, size: 20),
+      ),
+    );
+  }
+}
+
+class _EmptyContactsHint extends StatelessWidget {
+  const _EmptyContactsHint();
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isSelected = currentValue == value;
-
-    return InkWell(
-      onTap: () => onChanged(value),
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 1.5.h),
-        child: Row(
-          children: [
-            Radio<String>(
-              value: value,
-              groupValue: currentValue,
-              onChanged: (val) => onChanged(val!),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                    ),
-                  ),
-                  subtitle.isNotEmpty
-                      ? Text(
-                          subtitle,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        )
-                      : SizedBox.shrink(),
-                ],
-              ),
-            ),
-          ],
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 1.h),
+      child: Text(
+        'Sin contactos. Agrega hasta 5 personas que serán notificadas en caso de emergencia.',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
+    );
+  }
+}
+
+class _ErrorRetryRow extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorRetryRow({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            message,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
+        ),
+        TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+      ],
     );
   }
 }

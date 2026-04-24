@@ -1,5 +1,5 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
   static SupabaseClient? _client;
@@ -10,19 +10,13 @@ class SupabaseService {
   static Future<void> initialize() async {
     try {
       await Supabase.initialize(
-        url: 'https://rnnejozkbyagiibsntwc.supabase.co',
-        anonKey: 'sb_publishable_xCYOEK6DMW_hFfeLImRIew__uVVeUA1',
+        url: 'https://wftraznajuzezwlfvuni.supabase.co',
+        anonKey: 'sb_publishable_SPV0MouzJPWD3iPAsM3kww_W_WdgVlt',
       );
-
       _client = Supabase.instance.client;
-
-      if (kDebugMode) {
-        print('✅ Supabase initialized successfully');
-      }
+      if (kDebugMode) print('✅ Supabase initialized successfully');
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Supabase initialization error: $e');
-      }
+      if (kDebugMode) print('❌ Supabase initialization error: $e');
       rethrow;
     }
   }
@@ -37,48 +31,69 @@ class SupabaseService {
   // =============================
   // AUTHENTICATION
   // =============================
-  // Authentication Methods
+  static Future<void> ensureUserProfile() async {
+    final user = currentUser;
+    if (user == null) return;
+
+    final existing = await client
+        .from('users')
+        .select()
+        .eq('id', user.id)
+        .maybeSingle();
+
+    if (existing == null) {
+      await client.from('users').insert({
+        'id': user.id,
+        'email': user.email,
+        'full_name': user.userMetadata?['full_name'] ?? 'Usuario',
+        'avatar_url': user.userMetadata?['avatar_url'],
+      });
+    }
+  }
 
   static Future<AuthResponse> signInWithEmail({
     required String email,
     required String password,
   }) async {
     try {
-      return await client.auth.signInWithPassword(
+      final response = await client.auth.signInWithPassword(
         email: email,
         password: password,
       );
+      await ensureUserProfile();
+      return response;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Sign in error: $e');
-      }
+      if (kDebugMode) print('❌ Sign in error: $e');
       rethrow;
     }
   }
 
-  // 👇👇👇 PEGA ESTO AQUÍ EXACTO 👇👇👇
-
- static Future<void> signInWithGoogle() async {
-  try {
-    await client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: 'io.supabase.flutter://login-callback',
-    );
-  } catch (e) {
-    print('Error Google Sign-In: $e');
+  static Future<void> signInWithGoogle() async {
+    try {
+      await client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.flutter://login-callback',
+      );
+      await ensureUserProfile();
+    } catch (e) {
+      if (kDebugMode) print('❌ Google Sign-In error: $e');
+      rethrow;
+    }
   }
-}
 
-static Future<void> signInWithFacebook() async {
-  try {
-    await client.auth.signInWithOAuth(
-      OAuthProvider.facebook,
-      redirectTo: 'io.supabase.flutter://login-callback',
-    );
-  } catch (e) {
-    print('Error Facebook Sign-In: $e');
+  static Future<void> signInWithFacebook() async {
+    try {
+      await client.auth.signInWithOAuth(
+        OAuthProvider.facebook,
+        redirectTo: 'io.supabase.flutter://login-callback',
+      );
+      await ensureUserProfile();
+    } catch (e) {
+      if (kDebugMode) print('❌ Facebook Sign-In error: $e');
+      rethrow;
+    }
   }
-}
+
   static Future<AuthResponse> signUpWithEmail({
     required String email,
     required String password,
@@ -107,21 +122,18 @@ static Future<void> signInWithFacebook() async {
 
   static User? get currentUser => client.auth.currentUser;
   static String? get currentUserId => client.auth.currentUser?.id;
-  static Stream<AuthState> get authStateChanges =>
-      client.auth.onAuthStateChange;
+  static Stream<AuthState> get authStateChanges => client.auth.onAuthStateChange;
 
   // =============================
   // USER PROFILE
   // =============================
   static Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
-      final response = await client
-          .from('user_profiles')
+      return await client
+          .from('users')
           .select()
-          .eq('user_id', userId)
+          .eq('id', userId)
           .maybeSingle();
-
-      return response;
     } catch (e) {
       if (kDebugMode) print('❌ Get user profile error: $e');
       return null;
@@ -133,7 +145,7 @@ static Future<void> signInWithFacebook() async {
     required Map<String, dynamic> updates,
   }) async {
     try {
-      await client.from('user_profiles').update(updates).eq('user_id', userId);
+      await client.from('users').update(updates).eq('id', userId);
     } catch (e) {
       if (kDebugMode) print('❌ Update profile error: $e');
       rethrow;
@@ -151,7 +163,7 @@ static Future<void> signInWithFacebook() async {
     try {
       var query = client.from('incidents').select('''
         *,
-        reporter:user_profiles!incidents_reporter_id_fkey(
+        reporter:users!incidents_reporter_id_fkey(
           full_name,
           avatar_url,
           verification_status
@@ -159,17 +171,12 @@ static Future<void> signInWithFacebook() async {
         incident_media(*)
       ''');
 
-      if (status != null) {
-        query = query.eq('status', status);
-      }
+      if (status != null) query = query.eq('status', status);
+      if (severity != null) query = query.eq('severity', severity);
 
-      if (severity != null) {
-        query = query.eq('severity', severity);
-      }
-
-      final result = query.order('created_at', ascending: false).limit(limit);
-
-      return await result;
+      return await query
+          .order('created_at', ascending: false)
+          .limit(limit);
     } catch (e) {
       if (kDebugMode) print('❌ Get incidents error: $e');
       return [];
@@ -180,11 +187,9 @@ static Future<void> signInWithFacebook() async {
     String incidentId,
   ) async {
     try {
-      final response = await client
-          .from('incidents')
-          .select('''
+      return await client.from('incidents').select('''
         *,
-        reporter:user_profiles!incidents_reporter_id_fkey(
+        reporter:users!incidents_reporter_id_fkey(
           full_name,
           avatar_url,
           verification_status,
@@ -193,13 +198,9 @@ static Future<void> signInWithFacebook() async {
         incident_media(*),
         incident_comments(
           *,
-          commenter:user_profiles(full_name, avatar_url)
+          commenter:users(full_name, avatar_url)
         )
-      ''')
-          .eq('id', incidentId)
-          .maybeSingle();
-
-      return response;
+      ''').eq('id', incidentId).maybeSingle();
     } catch (e) {
       if (kDebugMode) print('❌ Get incident details error: $e');
       return null;
@@ -217,32 +218,29 @@ static Future<void> signInWithFacebook() async {
     bool isAnonymous = false,
   }) async {
     try {
-      final supabase = Supabase.instance.client;
+      final userId = currentUserId;
+      if (userId == null) throw Exception('User not authenticated');
 
-      final userId = currentUserId ?? 'test-user';
-
-      print('👤 User ID: $userId');
-      print('🚨 Intentando crear incidente...');
-
-      final response = await supabase
+      final response = await client
           .from('incidents')
           .insert({
-            'user_id': userId,
+            'reporter_id': userId,
             'title': title,
             'description': description,
             'incident_type': incidentType,
             'severity': severity,
             'latitude': latitude,
             'longitude': longitude,
+            'location_address': locationAddress,
+            'is_anonymous': isAnonymous,
+            'status': 'active',
           })
-          .select()
+          .select('id')
           .single();
 
-      print('✅ Incidente enviado correctamente');
-
-      return response['id'].toString();
+      return response['id'] as String;
     } catch (e) {
-      print('❌ ERROR: $e');
+      if (kDebugMode) print('❌ Create incident error: $e');
       rethrow;
     }
   }
@@ -292,12 +290,12 @@ static Future<void> signInWithFacebook() async {
       return await client
           .from('chat_participants')
           .select('''
-        chat_room_id,
-        chat_rooms(
-          *,
-          last_message:chat_messages(message, created_at)
-        )
-      ''')
+            chat_room_id,
+            chat_rooms(
+              *,
+              last_message:chat_messages(message, created_at)
+            )
+          ''')
           .eq('user_id', userId)
           .order('joined_at', ascending: false);
     } catch (e) {
@@ -313,9 +311,9 @@ static Future<void> signInWithFacebook() async {
       return await client
           .from('chat_messages')
           .select('''
-        *,
-        sender:user_profiles(full_name, avatar_url, role)
-      ''')
+            *,
+            sender:users(full_name, avatar_url, role)
+          ''')
           .eq('room_id', roomId)
           .order('created_at', ascending: true);
     } catch (e) {
@@ -417,14 +415,120 @@ static Future<void> signInWithFacebook() async {
       return await client
           .from('user_activity_logs')
           .select('''
-        *,
-        user:user_profiles(full_name, avatar_url)
-      ''')
+            *,
+            user:users(full_name, avatar_url)
+          ''')
           .order('timestamp', ascending: false)
           .limit(limit);
     } catch (e) {
       if (kDebugMode) print('❌ Get recent activity error: $e');
       return [];
+    }
+  }
+
+  // =============================
+  // EMERGENCY CONTACTS
+  // =============================
+  static Future<List<Map<String, dynamic>>> getEmergencyContacts() async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) return [];
+
+      return await client
+          .from('emergency_contacts')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: true);
+    } catch (e) {
+      if (kDebugMode) print('❌ Get emergency contacts error: $e');
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> addEmergencyContact({
+    required String name,
+    required String phone,
+    String relation = '',
+  }) async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) throw Exception('User not authenticated');
+
+      return await client
+          .from('emergency_contacts')
+          .insert({
+            'user_id': userId,
+            'name': name,
+            'phone': phone,
+            'relation': relation,
+          })
+          .select()
+          .single();
+    } catch (e) {
+      if (kDebugMode) print('❌ Add emergency contact error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> deleteEmergencyContact(String contactId) async {
+    try {
+      await client.from('emergency_contacts').delete().eq('id', contactId);
+    } catch (e) {
+      if (kDebugMode) print('❌ Delete emergency contact error: $e');
+      rethrow;
+    }
+  }
+
+  // =============================
+  // EMERGENCY ALERTS (PANIC)
+  // =============================
+  static Future<String?> createEmergencyAlert({
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) throw Exception('User not authenticated');
+
+      final response = await client
+          .from('emergency_alerts')
+          .insert({
+            'user_id': userId,
+            'latitude': latitude,
+            'longitude': longitude,
+            'status': 'active',
+          })
+          .select('id')
+          .single();
+
+      return response['id'] as String;
+    } catch (e) {
+      if (kDebugMode) print('❌ Create emergency alert error: $e');
+      return null;
+    }
+  }
+
+  static Future<void> resolveEmergencyAlert(String alertId) async {
+    try {
+      await client.from('emergency_alerts').update({
+        'status': 'resolved',
+        'resolved_at': DateTime.now().toIso8601String(),
+      }).eq('id', alertId);
+    } catch (e) {
+      if (kDebugMode) print('❌ Resolve emergency alert error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> cancelEmergencyAlert(String alertId) async {
+    try {
+      await client.from('emergency_alerts').update({
+        'status': 'cancelled',
+        'resolved_at': DateTime.now().toIso8601String(),
+      }).eq('id', alertId);
+    } catch (e) {
+      if (kDebugMode) print('❌ Cancel emergency alert error: $e');
+      rethrow;
     }
   }
 }

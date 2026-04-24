@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/alert_card_widget.dart';
 import './widgets/quick_action_widget.dart';
@@ -16,102 +18,154 @@ class AlertDashboardInitialPage extends StatefulWidget {
       _AlertDashboardInitialPageState();
 }
 
-class _AlertDashboardInitialPageState extends State<AlertDashboardInitialPage> {
-  bool _isRefreshing = false;
-  final String _currentLocation = "Chapinero, Bogotá";
-  final bool _locationServicesEnabled = true;
-  final bool _networkConnected = true;
+class _AlertDashboardInitialPageState
+    extends State<AlertDashboardInitialPage> {
+  bool _isLoading = true;
+  // ignore: prefer_final_fields — will be updated with real GPS location
+  String _currentLocation = 'Colombia';
   DateTime _lastUpdated = DateTime.now();
 
-  // Mock data for recent alerts
-  final List<Map<String, dynamic>> _recentAlerts = [
-    {
-      "id": 1,
-      "type": "Theft",
-      "icon": "local_police",
-      "timestamp": DateTime.now().subtract(Duration(minutes: 15)),
-      "distance": "0.3 km",
-      "severity": "high",
-      "severityColor": Color(0xFF7a729b),
-      "description": "Reported theft near Parque 93",
-      "location": "Calle 93 #13-45",
-    },
-    {
-      "id": 2,
-      "type": "Suspicious Activity",
-      "icon": "visibility",
-      "timestamp": DateTime.now().subtract(Duration(hours: 1)),
-      "distance": "0.8 km",
-      "severity": "medium",
-      "severityColor": Color(0xFFF57C00),
-      "description": "Suspicious person reported in the area",
-      "location": "Carrera 15 #85-20",
-    },
-    {
-      "id": 3,
-      "type": "Violence",
-      "icon": "warning",
-      "timestamp": DateTime.now().subtract(Duration(hours: 3)),
-      "distance": "1.2 km",
-      "severity": "high",
-      "severityColor": Color(0xFFD32F2F),
-      "description": "Physical altercation reported",
-      "location": "Avenida 82 #10-30",
-    },
-    {
-      "id": 4,
-      "type": "Safe Zone",
-      "icon": "check_circle",
-      "timestamp": DateTime.now().subtract(Duration(hours: 5)),
-      "distance": "0.5 km",
-      "severity": "low",
-      "severityColor": Color(0xFF2E7D32),
-      "description": "Area marked as safe by community",
-      "location": "Parque de la 93",
-    },
-  ];
+  List<Map<String, dynamic>> _incidents = [];
+  Map<String, dynamic> _stats = {};
+  int _safetyScore = 85;
+
+  RealtimeChannel? _realtimeChannel;
+
+  static const Map<String, String> _typeLabels = {
+    'theft': 'Robo',
+    'assault': 'Agresión',
+    'suspicious_activity': 'Actividad Sospechosa',
+    'emergency': 'Emergencia',
+    'accident': 'Accidente',
+    'fire': 'Incendio',
+    'vandalism': 'Vandalismo',
+    'other': 'Otro',
+  };
+
+  static const Map<String, String> _typeIcons = {
+    'theft': 'local_police',
+    'assault': 'warning',
+    'suspicious_activity': 'visibility',
+    'emergency': 'emergency',
+    'accident': 'car_crash',
+    'fire': 'local_fire_department',
+    'vandalism': 'broken_image',
+    'other': 'report_problem',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _subscribeToRealtime();
+  }
+
+  @override
+  void dispose() {
+    _realtimeChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  Color _getSeverityColor(String severity) {
+    switch (severity) {
+      case 'critical':
+        return const Color(0xFFB71C1C);
+      case 'high':
+        return const Color(0xFFD32F2F);
+      case 'low':
+        return const Color(0xFF2E7D32);
+      default:
+        return const Color(0xFFF57C00);
+    }
+  }
+
+  Map<String, dynamic> _mapIncident(Map<String, dynamic> raw) {
+    final type = raw['incident_type'] as String? ?? 'other';
+    final severity = raw['severity'] as String? ?? 'medium';
+    final createdAt = raw['created_at'] as String?;
+    return {
+      'id': raw['id'],
+      'type': _typeLabels[type] ?? 'Incidente',
+      'icon': _typeIcons[type] ?? 'report_problem',
+      'timestamp':
+          createdAt != null ? DateTime.parse(createdAt) : DateTime.now(),
+      'distance': 'N/A',
+      'severity': severity,
+      'severityColor': _getSeverityColor(severity),
+      'description': raw['description'] ?? 'Sin descripción',
+      'location': raw['location_address'] ?? 'Ubicación no especificada',
+      'latitude': raw['latitude'],
+      'longitude': raw['longitude'],
+      'incident_type': type,
+      'status': raw['status'] ?? 'active',
+    };
+  }
+
+  int _calcSafetyScore(Map<String, dynamic> stats) {
+    final total = (stats['total_alerts'] as num?)?.toInt() ?? 0;
+    final active = (stats['active_alerts'] as num?)?.toInt() ?? 0;
+    if (total == 0) return 85;
+    final activeRate = active / total;
+    return (100 - (activeRate * 80)).round().clamp(20, 100);
+  }
+
+  Future<void> _loadData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final results = await Future.wait([
+        SupabaseService.getIncidents(status: 'active', limit: 20),
+        SupabaseService.getDashboardStatistics(),
+      ]);
+
+      final rawIncidents = results[0] as List<Map<String, dynamic>>;
+      final stats = results[1] as Map<String, dynamic>;
+
+      if (mounted) {
+        setState(() {
+          _incidents = rawIncidents.map(_mapIncident).toList();
+          _stats = stats;
+          _safetyScore = _calcSafetyScore(stats);
+          _lastUpdated = DateTime.now();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _subscribeToRealtime() {
+    _realtimeChannel = SupabaseService.subscribeToIncidents((raw) {
+      if (mounted) {
+        setState(() => _incidents.insert(0, _mapIncident(raw)));
+      }
+    });
+  }
 
   Future<void> _handleRefresh() async {
-    setState(() => _isRefreshing = true);
     HapticFeedback.mediumImpact();
-
-    // Simulate data refresh
-    await Future.delayed(Duration(seconds: 2));
-
-    setState(() {
-      _isRefreshing = false;
-      _lastUpdated = DateTime.now();
-    });
-
-    HapticFeedback.lightImpact();
+    await _loadData();
+    if (mounted) HapticFeedback.lightImpact();
   }
 
   void _handleEmergencyPanic() {
     HapticFeedback.heavyImpact();
-    Navigator.of(
-      context,
-      rootNavigator: true,
-    ).pushNamed('/emergency-panic-mode');
+    Navigator.of(context, rootNavigator: true).pushNamed(
+      '/emergency-panic-mode',
+    );
   }
 
   void _handleLocationRefresh() {
     HapticFeedback.lightImpact();
-    setState(() {
-      _lastUpdated = DateTime.now();
-    });
+    setState(() => _lastUpdated = DateTime.now());
   }
 
   String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
+    final diff = DateTime.now().difference(timestamp);
+    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes}m';
+    if (diff.inHours < 24) return 'hace ${diff.inHours}h';
+    return 'hace ${diff.inDays}d';
   }
 
   @override
@@ -137,23 +191,18 @@ class _AlertDashboardInitialPageState extends State<AlertDashboardInitialPage> {
                     ? Colors.black.withValues(alpha: 0.3)
                     : Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4.0,
-                offset: Offset(0, 2),
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Row(
             children: [
-              // Location section
               Expanded(
                 child: Row(
                   children: [
                     CustomIconWidget(
-                      iconName: _locationServicesEnabled
-                          ? 'location_on'
-                          : 'location_off',
-                      color: _locationServicesEnabled
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurfaceVariant,
+                      iconName: 'location_on',
+                      color: theme.colorScheme.primary,
                       size: 20,
                     ),
                     SizedBox(width: 2.w),
@@ -171,15 +220,13 @@ class _AlertDashboardInitialPageState extends State<AlertDashboardInitialPage> {
                           Row(
                             children: [
                               CustomIconWidget(
-                                iconName: _networkConnected
-                                    ? 'wifi'
-                                    : 'wifi_off',
+                                iconName: 'wifi',
                                 color: theme.colorScheme.onSurfaceVariant,
                                 size: 12,
                               ),
                               SizedBox(width: 1.w),
                               Text(
-                                _networkConnected ? 'Connected' : 'Offline',
+                                'Conectado',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
@@ -196,13 +243,13 @@ class _AlertDashboardInitialPageState extends State<AlertDashboardInitialPage> {
                         color: theme.colorScheme.onSurfaceVariant,
                         size: 20,
                       ),
-                      tooltip: 'Refresh location',
+                      tooltip: 'Actualizar',
                     ),
                   ],
                 ),
               ),
               SizedBox(width: 2.w),
-              // Emergency panic button
+              // SOS button
               Container(
                 decoration: BoxDecoration(
                   color: theme.colorScheme.error,
@@ -211,7 +258,7 @@ class _AlertDashboardInitialPageState extends State<AlertDashboardInitialPage> {
                     BoxShadow(
                       color: theme.colorScheme.error.withValues(alpha: 0.3),
                       blurRadius: 8.0,
-                      offset: Offset(0, 2),
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -253,151 +300,153 @@ class _AlertDashboardInitialPageState extends State<AlertDashboardInitialPage> {
 
         // Main content
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: _handleRefresh,
-            color: theme.colorScheme.primary,
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-              children: [
-                // Safety score widget
-                SafetyScoreWidget(
-                  score: 72,
-                  location: _currentLocation,
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    // Show detailed breakdown
-                  },
-                ),
-
-                SizedBox(height: 3.h),
-
-                // Quick actions
-                Row(
-                  children: [
-                    Expanded(
-                      child: QuickActionWidget(
-                        icon: 'add_alert',
-                        label: 'Report Incident',
-                        color: theme.colorScheme.primary,
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.of(
-                            context,
-                            rootNavigator: true,
-                          ).pushNamed('/incident-reporting');
-                        },
-                      ),
-                    ),
-                    SizedBox(width: 3.w),
-                    Expanded(
-                      child: QuickActionWidget(
-                        icon: 'map',
-                        label: 'Safety Map',
-                        color: theme.colorScheme.secondary,
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.of(
-                            context,
-                            rootNavigator: true,
-                          ).pushNamed('/interactive-safety-map');
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 3.h),
-
-                // Recent alerts header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Recent Alerts (24h)',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      'Updated ${_formatTimestamp(_lastUpdated)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 2.h),
-
-                // Recent alerts list
-                if (_recentAlerts.isEmpty)
-                  Container(
-                    padding: EdgeInsets.all(6.w),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        CustomIconWidget(
-                          iconName: 'check_circle',
-                          color: theme.colorScheme.primary,
-                          size: 48,
-                        ),
-                        SizedBox(height: 2.h),
-                        Text(
-                          'No Recent Alerts',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 1.h),
-                        Text(
-                          'Your area is currently safe. Stay vigilant and report any suspicious activity.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 2.h),
-                        Text(
-                          'Safety Tips',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 1.h),
-                        Text(
-                          '• Always be aware of your surroundings\n• Keep valuables out of sight\n• Use well-lit and populated routes\n• Share your location with trusted contacts',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ..._recentAlerts.map(
-                    (alert) => AlertCardWidget(
-                      alertData: alert,
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.of(
-                          context,
-                          rootNavigator: true,
-                        ).pushNamed('/alert-details', arguments: alert);
-                      },
-                      onShare: () {
-                        HapticFeedback.lightImpact();
-                        // Share alert functionality
-                      },
-                    ),
+          child: _isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                    color: theme.colorScheme.primary,
                   ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  color: theme.colorScheme.primary,
+                  child: ListView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 4.w,
+                      vertical: 2.h,
+                    ),
+                    children: [
+                      SafetyScoreWidget(
+                        score: _safetyScore,
+                        location: _currentLocation,
+                        stats: _stats,
+                        onTap: () => HapticFeedback.lightImpact(),
+                      ),
 
-                SizedBox(height: 10.h),
-              ],
-            ),
-          ),
+                      SizedBox(height: 3.h),
+
+                      // Quick actions
+                      Row(
+                        children: [
+                          Expanded(
+                            child: QuickActionWidget(
+                              icon: 'add_alert',
+                              label: 'Reportar Incidente',
+                              color: theme.colorScheme.primary,
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                Navigator.of(
+                                  context,
+                                  rootNavigator: true,
+                                ).pushNamed('/incident-reporting');
+                              },
+                            ),
+                          ),
+                          SizedBox(width: 3.w),
+                          Expanded(
+                            child: QuickActionWidget(
+                              icon: 'map',
+                              label: 'Mapa de Seguridad',
+                              color: theme.colorScheme.secondary,
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                Navigator.of(
+                                  context,
+                                  rootNavigator: true,
+                                ).pushNamed('/interactive-safety-map');
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 3.h),
+
+                      // Recent alerts header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Alertas Recientes (24h)',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            'Actualizado ${_formatTimestamp(_lastUpdated)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 2.h),
+
+                      if (_incidents.isEmpty)
+                        Container(
+                          padding: EdgeInsets.all(6.w),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            children: [
+                              CustomIconWidget(
+                                iconName: 'check_circle',
+                                color: theme.colorScheme.primary,
+                                size: 48,
+                              ),
+                              SizedBox(height: 2.h),
+                              Text(
+                                'Sin Alertas Recientes',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 1.h),
+                              Text(
+                                'Tu área está actualmente segura. Mantente alerta y reporta cualquier actividad sospechosa.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 2.h),
+                              Text(
+                                'Consejos de Seguridad',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 1.h),
+                              Text(
+                                '• Mantente atento a tu entorno\n• Guarda tus objetos de valor\n• Usa rutas iluminadas y transitadas\n• Comparte tu ubicación con contactos de confianza',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        ..._incidents.map(
+                          (incident) => AlertCardWidget(
+                            alertData: incident,
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              Navigator.of(
+                                context,
+                                rootNavigator: true,
+                              ).pushNamed('/alert-details', arguments: incident);
+                            },
+                            onShare: () => HapticFeedback.lightImpact(),
+                          ),
+                        ),
+
+                      SizedBox(height: 10.h),
+                    ],
+                  ),
+                ),
         ),
       ],
     );

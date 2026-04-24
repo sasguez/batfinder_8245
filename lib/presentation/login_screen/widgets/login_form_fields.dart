@@ -3,7 +3,7 @@ import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
 
-/// Login form fields widget containing email/phone and password inputs
+/// Campos del formulario de login — estilos para fondo oscuro via Theme override
 class LoginFormFields extends StatefulWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;
@@ -24,132 +24,138 @@ class _LoginFormFieldsState extends State<LoginFormFields> {
   bool _obscurePassword = true;
 
   String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Por favor ingresa tu correo o teléfono';
-    }
-
-    // Check if it's a phone number (Colombian format)
-    final phoneRegex = RegExp(r'^3[0-9]{9}$');
-    if (phoneRegex.hasMatch(value.replaceAll(RegExp(r'[\s\-\(\)]'), ''))) {
-      return null;
-    }
-
-    // Check if it's a valid email
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(value)) {
-      return 'Ingresa un correo o teléfono válido';
-    }
-
+    if (value == null || value.isEmpty) return 'Ingresa tu correo o teléfono';
+    final phone = RegExp(r'^3[0-9]{9}$');
+    if (phone.hasMatch(value.replaceAll(RegExp(r'[\s\-\(\)]'), ''))) return null;
+    final email = RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$');
+    if (!email.hasMatch(value)) return 'Correo o teléfono inválido';
     return null;
   }
 
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Por favor ingresa tu contraseña';
-    }
-    if (value.length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres';
-    }
+    if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+    if (value.length < 6) return 'Mínimo 6 caracteres';
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // Override del InputDecorationTheme para el fondo oscuro del login
+    final darkInputTheme = Theme.of(context).copyWith(
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: const TextStyle(color: Colors.white70),
+        hintStyle: const TextStyle(color: Colors.white38),
+        errorStyle: const TextStyle(color: Color(0xFFEF9A9A)),
+        floatingLabelStyle: const TextStyle(color: Colors.white),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white38, width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide:
+              const BorderSide(color: Color(0xFFEF9A9A), width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide:
+              const BorderSide(color: Color(0xFFEF9A9A), width: 2),
+        ),
+      ),
+    );
 
-    return Form(
-      key: widget.formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Email/Phone field
-          TextFormField(
-            controller: widget.emailController,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            validator: _validateEmail,
-            decoration: InputDecoration(
-              labelText: 'Correo o Teléfono',
-              hintText: 'ejemplo@correo.com o 3001234567',
-              prefixIcon: Padding(
-                padding: EdgeInsets.all(3.w),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CustomImageWidget(
-                      imageUrl: 'https://flagcdn.com/w40/co.png',
-                      width: 6.w,
-                      height: 6.w,
-                      fit: BoxFit.contain,
-                      semanticLabel:
-                          'Bandera de Colombia con franjas amarilla, azul y roja',
-                    ),
-                    SizedBox(width: 2.w),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: 2.h),
-
-          // Password field
-          TextFormField(
-            controller: widget.passwordController,
-            obscureText: _obscurePassword,
-            textInputAction: TextInputAction.done,
-            validator: _validatePassword,
-            decoration: InputDecoration(
-              labelText: 'Contraseña',
-              hintText: 'Ingresa tu contraseña',
-              prefixIcon: Padding(
-                padding: EdgeInsets.all(3.w),
-                child: CustomIconWidget(
-                  iconName: 'lock_outline',
-                  color: theme.colorScheme.onSurfaceVariant,
-                  size: 6.w,
-                ),
-              ),
-              suffixIcon: IconButton(
-                icon: CustomIconWidget(
-                  iconName: _obscurePassword ? 'visibility_off' : 'visibility',
-                  color: theme.colorScheme.onSurfaceVariant,
-                  size: 6.w,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
-                },
-                tooltip: _obscurePassword
-                    ? 'Mostrar contraseña'
-                    : 'Ocultar contraseña',
-              ),
-            ),
-          ),
-
-          // Forgot password link
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Función de recuperación de contraseña próximamente',
-                    ),
+    return Theme(
+      data: darkInputTheme,
+      child: Form(
+        key: widget.formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Campo correo / teléfono
+            TextFormField(
+              controller: widget.emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              validator: _validateEmail,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: InputDecoration(
+                labelText: 'Correo o Teléfono',
+                hintText: 'ejemplo@correo.com',
+                prefixIcon: Padding(
+                  padding: EdgeInsets.all(3.w),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CustomImageWidget(
+                        imageUrl: 'https://flagcdn.com/w40/co.png',
+                        width: 6.w,
+                        height: 6.w,
+                        fit: BoxFit.contain,
+                        semanticLabel: 'Bandera Colombia',
+                      ),
+                      SizedBox(width: 2.w),
+                    ],
                   ),
-                );
-              },
-              child: Text(
-                '¿Olvidaste tu contraseña?',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-          ),
-        ],
+            SizedBox(height: 2.h),
+
+            // Campo contraseña
+            TextFormField(
+              controller: widget.passwordController,
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.done,
+              validator: _validatePassword,
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              decoration: InputDecoration(
+                labelText: 'Contraseña',
+                hintText: 'Ingresa tu contraseña',
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Icon(Icons.lock_outline, color: Colors.white70),
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: Colors.white70,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+            ),
+
+            // Olvidé contraseña
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content:
+                        Text('Recuperación de contraseña próximamente'),
+                  ),
+                ),
+                child: const Text(
+                  '¿Olvidaste tu contraseña?',
+                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

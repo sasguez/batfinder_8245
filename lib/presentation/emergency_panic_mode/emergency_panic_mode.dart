@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -9,9 +9,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/power_button_detector_service.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/emergency_contacts_widget.dart';
 import './widgets/emergency_header_widget.dart';
@@ -30,6 +33,9 @@ class EmergencyPanicMode extends StatefulWidget {
 
 class _EmergencyPanicModeState extends State<EmergencyPanicMode>
     with WidgetsBindingObserver {
+  PowerButtonDetectorService? _powerDetector;
+  String? _alertId;
+
   // Emergency state
   int _remainingSeconds = 120; // 2 minutes default countdown
   Timer? _countdownTimer;
@@ -53,22 +59,31 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
   CameraController? _cameraController;
   final ImagePicker _imagePicker = ImagePicker();
 
-  // Emergency contacts mock data
-  final List<Map<String, dynamic>> _emergencyContacts = [
-    {'name': 'María González', 'phone': '+57 300 123 4567', 'notified': true},
-    {'name': 'Carlos Rodríguez', 'phone': '+57 310 987 6543', 'notified': true},
-    {'name': 'Ana Martínez', 'phone': '+57 320 456 7890', 'notified': false},
-  ];
+  // Contactos reales cargados desde Supabase
+  List<Map<String, dynamic>> _emergencyContacts = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeEmergencyMode();
+    _loadAndStartDetector();
+  }
+
+  Future<void> _loadAndStartDetector() async {
+    final prefs = await SharedPreferences.getInstance();
+    final requiredTaps = prefs.getInt('power_button_required_taps') ?? 3;
+    // 3 toques en pánico activo dispara la cancelación de la alerta
+    _powerDetector = PowerButtonDetectorService(
+      requiredTaps: requiredTaps,
+      onTrigger: () => _cancelEmergencyMode(),
+    );
+    _powerDetector!.start();
   }
 
   @override
   void dispose() {
+    _powerDetector?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _countdownTimer?.cancel();
     _positionStream?.cancel();
@@ -87,20 +102,51 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
   }
 
   Future<void> _initializeEmergencyMode() async {
-    // Start countdown timer
     _startCountdownTimer();
-
-    // Initialize location tracking
     await _initializeLocationTracking();
-
-    // Start audio recording automatically
     await _startAudioRecording();
-
-    // Initialize camera
     await _initializeCamera();
 
-    // Show emergency notification
+    // Cargar contactos reales y registrar alerta en Supabase
+    await _loadEmergencyContacts();
+    await _createEmergencyAlert();
+
     _showEmergencyToast('Modo de emergencia activado');
+  }
+
+  Future<void> _loadEmergencyContacts() async {
+    try {
+      final data = await SupabaseService.getEmergencyContacts();
+      if (!mounted) return;
+      setState(() {
+        _emergencyContacts = data.map((c) => {
+          'name': c['name'] as String,
+          'phone': c['phone'] as String,
+          'notified': false,
+        }).toList();
+      });
+    } catch (e) {
+      if (kDebugMode) print('❌ Load emergency contacts error: $e');
+    }
+  }
+
+  Future<void> _createEmergencyAlert() async {
+    try {
+      final id = await SupabaseService.createEmergencyAlert(
+        latitude: _latitude != 0.0 ? _latitude : null,
+        longitude: _longitude != 0.0 ? _longitude : null,
+      );
+      if (id == null || !mounted) return;
+      _alertId = id;
+      // Marcar todos los contactos como notificados una vez registrada la alerta
+      setState(() {
+        _emergencyContacts = _emergencyContacts
+            .map((c) => {...c, 'notified': true})
+            .toList();
+      });
+    } catch (e) {
+      if (kDebugMode) print('❌ Create emergency alert error: $e');
+    }
   }
 
   void _startCountdownTimer() {
@@ -345,6 +391,11 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
         await _audioRecorder.stop();
       }
       _cameraController?.dispose();
+
+      // Marcar alerta como cancelada en Supabase
+      if (_alertId != null) {
+        await SupabaseService.cancelEmergencyAlert(_alertId!);
+      }
 
       if (!mounted) return;
 

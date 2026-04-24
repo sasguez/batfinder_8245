@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
-import '../../widgets/custom_icon_widget.dart';
+import '../../services/supabase_service.dart';
 import './widgets/basic_info_section_widget.dart';
 import './widgets/biometric_enrollment_widget.dart';
 import './widgets/role_selection_section_widget.dart';
@@ -11,9 +11,6 @@ import './widgets/role_specific_section_widget.dart';
 import './widgets/success_animation_widget.dart';
 import './widgets/terms_acceptance_widget.dart';
 
-/// User Registration Screen
-/// Enables new users to create accounts with role-based profile setup
-/// optimized for Colombian safety requirements
 class UserRegistration extends StatefulWidget {
   const UserRegistration({super.key});
 
@@ -25,32 +22,27 @@ class _UserRegistrationState extends State<UserRegistration> {
   final _formKey = GlobalKey<FormState>();
   final _scrollController = ScrollController();
 
-  // Form controllers
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _organizationController = TextEditingController();
 
-  // Form state
   String _selectedRole = 'Citizen';
   String? _selectedMunicipality;
   String? _badgePhotoPath;
   bool _termsAccepted = false;
   bool _isLoading = false;
   bool _showPassword = false;
-  bool _showSuccessAnimation = false;
-  bool _showEmailVerificationModal = false;
   double _passwordStrength = 0.0;
 
-  // Biometric state
   bool _biometricAvailable = false;
   bool _biometricEnrolled = false;
 
   @override
   void initState() {
     super.initState();
-    _checkBiometricAvailability();
+    _biometricAvailable = true;
     _passwordController.addListener(_updatePasswordStrength);
   }
 
@@ -65,25 +57,14 @@ class _UserRegistrationState extends State<UserRegistration> {
     super.dispose();
   }
 
-  void _checkBiometricAvailability() {
-    // Simulate biometric check
-    setState(() {
-      _biometricAvailable = true;
-    });
-  }
-
   void _updatePasswordStrength() {
-    final password = _passwordController.text;
-    double strength = 0.0;
-
-    if (password.length >= 8) strength += 0.25;
-    if (password.contains(RegExp(r'[A-Z]'))) strength += 0.25;
-    if (password.contains(RegExp(r'[0-9]'))) strength += 0.25;
-    if (password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) strength += 0.25;
-
-    setState(() {
-      _passwordStrength = strength;
-    });
+    final p = _passwordController.text;
+    double s = 0.0;
+    if (p.length >= 8) { s += 0.25; }
+    if (p.contains(RegExp(r'[A-Z]'))) { s += 0.25; }
+    if (p.contains(RegExp(r'[0-9]'))) { s += 0.25; }
+    if (p.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) { s += 0.25; }
+    setState(() => _passwordStrength = s);
   }
 
   bool _isFormValid() {
@@ -91,68 +72,62 @@ class _UserRegistrationState extends State<UserRegistration> {
         _emailController.text.isEmpty ||
         _phoneController.text.isEmpty ||
         _passwordController.text.isEmpty ||
-        !_termsAccepted) {
-      return false;
-    }
-
-    if (_selectedRole == 'Citizen' && _selectedMunicipality == null) {
-      return false;
-    }
-
-    if (_selectedRole == 'Authority' && _badgePhotoPath == null) {
-      return false;
-    }
-
+        !_termsAccepted) return false;
+    if (_selectedRole == 'Citizen' && _selectedMunicipality == null) return false;
+    if (_selectedRole == 'Authority' && _badgePhotoPath == null) return false;
     if (_selectedRole == 'NGO Representative' &&
-        _organizationController.text.isEmpty) {
-      return false;
-    }
-
+        _organizationController.text.isEmpty) return false;
     return true;
   }
 
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate() || !_isFormValid()) {
       HapticFeedback.mediumImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please complete all required fields'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Completa todos los campos requeridos'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     HapticFeedback.mediumImpact();
 
-    // Simulate registration API call
-    await Future.delayed(Duration(seconds: 2));
+    try {
+      await SupabaseService.signUpWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        metadata: {
+          'full_name': _fullNameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'role': _selectedRole.toLowerCase().replaceAll(' ', '_'),
+        },
+      );
 
-    setState(() {
-      _isLoading = false;
-    });
+      if (!mounted) return;
 
-    // Check for duplicate account error (simulated)
-    if (_emailController.text == 'duplicate@example.com') {
-      HapticFeedback.heavyImpact();
+      if (_biometricAvailable && !_biometricEnrolled) {
+        _showBiometricEnrollmentDialog();
+      } else {
+        _showSuccessAndNavigate();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().contains('already registered')
+          ? 'Ya existe una cuenta con este correo.'
+          : 'Error al registrarse. Intenta de nuevo.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('An account with this email already exists'),
+          content: Text(msg),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
-      return;
-    }
-
-    // Show biometric enrollment if available
-    if (_biometricAvailable && !_biometricEnrolled) {
-      _showBiometricEnrollmentDialog();
-    } else {
-      _showEmailVerification();
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -162,89 +137,27 @@ class _UserRegistrationState extends State<UserRegistration> {
       barrierDismissible: false,
       builder: (context) => BiometricEnrollmentWidget(
         onEnroll: () {
-          setState(() {
-            _biometricEnrolled = true;
-          });
+          setState(() => _biometricEnrolled = true);
           Navigator.pop(context);
-          _showEmailVerification();
+          _showSuccessAndNavigate();
         },
         onSkip: () {
           Navigator.pop(context);
-          _showEmailVerification();
+          _showSuccessAndNavigate();
         },
-      ),
-    );
-  }
-
-  void _showEmailVerification() {
-    setState(() {
-      _showEmailVerificationModal = true;
-    });
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Text('Verify Your Email'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CustomIconWidget(
-              iconName: 'email',
-              color: Theme.of(context).colorScheme.primary,
-              size: 48,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'We\'ve sent a verification email to ${_emailController.text}',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Please check your inbox and click the verification link to activate your account.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Verification email resent')),
-              );
-            },
-            child: Text('Resend Email'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSuccessAndNavigate();
-            },
-            child: Text('Continue'),
-          ),
-        ],
       ),
     );
   }
 
   void _showSuccessAndNavigate() {
-    setState(() {
-      _showSuccessAnimation = true;
-    });
-
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => SuccessAnimationWidget(
         onComplete: () {
           Navigator.pop(context);
-          Navigator.of(
-            context,
-            rootNavigator: true,
-          ).pushReplacementNamed('/onboarding-flow');
+          Navigator.of(context, rootNavigator: true)
+              .pushReplacementNamed(AppRoutes.alertDashboard);
         },
       ),
     );
@@ -254,43 +167,46 @@ class _UserRegistrationState extends State<UserRegistration> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (_fullNameController.text.isNotEmpty ||
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final hasData = _fullNameController.text.isNotEmpty ||
             _emailController.text.isNotEmpty ||
             _phoneController.text.isNotEmpty ||
-            _passwordController.text.isNotEmpty) {
-          final shouldPop = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('Discard Changes?'),
-              content: Text('Your registration progress will be lost.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text('Discard'),
-                ),
-              ],
-            ),
-          );
-          return shouldPop ?? false;
+            _passwordController.text.isNotEmpty;
+        if (!hasData) {
+          if (mounted) { Navigator.pop(context); }
+          return;
         }
-        return true;
+        final shouldPop = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('¿Descartar cambios?'),
+            content: const Text('Tu progreso de registro se perderá.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Descartar'),
+              ),
+            ],
+          ),
+        );
+        if (shouldPop == true && context.mounted) { Navigator.pop(context); }
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
-          title: Text('Create Account'),
+          title: const Text('Crear Cuenta'),
           centerTitle: false,
           leading: IconButton(
             icon: CustomIconWidget(
               iconName: 'arrow_back',
-              color:
-                  theme.appBarTheme.iconTheme?.color ??
+              color: theme.appBarTheme.iconTheme?.color ??
                   theme.colorScheme.onSurface,
               size: 24,
             ),
@@ -307,23 +223,21 @@ class _UserRegistrationState extends State<UserRegistration> {
               controller: _scrollController,
               padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
               children: [
-                // Header
                 Text(
-                  'Join BatFinder',
+                  'Únete a BatFinder',
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 SizedBox(height: 1.h),
                 Text(
-                  'Create your account to help make Colombia safer',
+                  'Crea tu cuenta para contribuir a la seguridad de Colombia',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 SizedBox(height: 3.h),
 
-                // Basic Information Section
                 BasicInfoSectionWidget(
                   fullNameController: _fullNameController,
                   emailController: _emailController,
@@ -331,15 +245,11 @@ class _UserRegistrationState extends State<UserRegistration> {
                   passwordController: _passwordController,
                   showPassword: _showPassword,
                   passwordStrength: _passwordStrength,
-                  onTogglePassword: () {
-                    setState(() {
-                      _showPassword = !_showPassword;
-                    });
-                  },
+                  onTogglePassword: () =>
+                      setState(() => _showPassword = !_showPassword),
                 ),
                 SizedBox(height: 3.h),
 
-                // Role Selection Section
                 RoleSelectionSectionWidget(
                   selectedRole: _selectedRole,
                   onRoleChanged: (role) {
@@ -353,51 +263,36 @@ class _UserRegistrationState extends State<UserRegistration> {
                 ),
                 SizedBox(height: 3.h),
 
-                // Role-Specific Section
                 RoleSpecificSectionWidget(
                   selectedRole: _selectedRole,
                   selectedMunicipality: _selectedMunicipality,
                   badgePhotoPath: _badgePhotoPath,
                   organizationController: _organizationController,
-                  onMunicipalityChanged: (municipality) {
-                    setState(() {
-                      _selectedMunicipality = municipality;
-                    });
-                  },
-                  onBadgePhotoSelected: (path) {
-                    setState(() {
-                      _badgePhotoPath = path;
-                    });
-                  },
+                  onMunicipalityChanged: (m) =>
+                      setState(() => _selectedMunicipality = m),
+                  onBadgePhotoSelected: (p) =>
+                      setState(() => _badgePhotoPath = p),
                 ),
                 SizedBox(height: 3.h),
 
-                // Terms Acceptance
                 TermsAcceptanceWidget(
                   termsAccepted: _termsAccepted,
-                  onChanged: (value) {
-                    setState(() {
-                      _termsAccepted = value ?? false;
-                    });
-                  },
+                  onChanged: (v) =>
+                      setState(() => _termsAccepted = v ?? false),
                 ),
                 SizedBox(height: 4.h),
 
-                // Create Account Button
                 SizedBox(
                   width: double.infinity,
                   height: 6.h,
                   child: ElevatedButton(
-                    onPressed: _isFormValid() && !_isLoading
-                        ? _handleRegistration
-                        : null,
+                    onPressed:
+                        _isFormValid() && !_isLoading ? _handleRegistration : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: theme.colorScheme.onPrimary,
-                      disabledBackgroundColor: theme
-                          .colorScheme
-                          .onSurfaceVariant
-                          .withValues(alpha: 0.12),
+                      disabledBackgroundColor:
+                          theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -409,12 +304,11 @@ class _UserRegistrationState extends State<UserRegistration> {
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                theme.colorScheme.onPrimary,
-                              ),
+                                  theme.colorScheme.onPrimary),
                             ),
                           )
                         : Text(
-                            'Create Account',
+                            'Crear Cuenta',
                             style: theme.textTheme.labelLarge?.copyWith(
                               color: theme.colorScheme.onPrimary,
                             ),
@@ -423,23 +317,20 @@ class _UserRegistrationState extends State<UserRegistration> {
                 ),
                 SizedBox(height: 2.h),
 
-                // Login Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Already have an account? ',
+                      '¿Ya tienes cuenta? ',
                       style: theme.textTheme.bodyMedium,
                     ),
                     TextButton(
                       onPressed: () {
                         HapticFeedback.lightImpact();
-                        Navigator.of(
-                          context,
-                          rootNavigator: true,
-                        ).pushReplacementNamed('/login-screen');
+                        Navigator.of(context, rootNavigator: true)
+                            .pushReplacementNamed(AppRoutes.login);
                       },
-                      child: Text('Sign In'),
+                      child: const Text('Iniciar Sesión'),
                     ),
                   ],
                 ),

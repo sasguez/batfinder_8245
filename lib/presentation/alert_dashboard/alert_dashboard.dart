@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../routes/app_routes.dart';
+import '../../services/power_button_detector_service.dart';
 import '../../widgets/custom_bottom_bar.dart';
 import './alert_dashboard_initial_page.dart';
 
@@ -14,6 +17,7 @@ class AlertDashboard extends StatefulWidget {
 class AlertDashboardState extends State<AlertDashboard> {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   int currentIndex = 0;
+  PowerButtonDetectorService? _powerDetector;
 
   // ALL CustomBottomBar routes in EXACT order matching CustomBottomBar items
   // Dashboard, Map, Report, Chat, Profile
@@ -24,6 +28,36 @@ class AlertDashboardState extends State<AlertDashboard> {
     '/community-safety-chat',
     '/user-profile-settings',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAndStartDetector();
+  }
+
+  Future<void> _loadAndStartDetector() async {
+    final prefs = await SharedPreferences.getInstance();
+    final requiredTaps = prefs.getInt('power_button_required_taps') ?? 3;
+    _powerDetector = PowerButtonDetectorService(
+      requiredTaps: requiredTaps,
+      onTrigger: _activatePanicMode,
+    );
+    _powerDetector!.start();
+  }
+
+  @override
+  void dispose() {
+    _powerDetector?.dispose();
+    super.dispose();
+  }
+
+  void _activatePanicMode() {
+    if (!mounted) return;
+    HapticFeedback.heavyImpact();
+    Navigator.of(context, rootNavigator: true).pushNamed(
+      AppRoutes.emergencyPanicMode,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -4,7 +4,6 @@ import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
-import '../../services/supabase_service.dart';
 
 /// Splash Screen for BatFinder Colombian Safety Application
 /// Provides branded launch experience while initializing security services
@@ -86,25 +85,12 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _navigateToNextScreen() {
-    Navigator.of(
-      context,
-      rootNavigator: true,
-    ).pushReplacementNamed(AppRoutes.login);
-    // Simulate authentication check
+    if (!mounted) return;
     final bool isAuthenticated =
         Supabase.instance.client.auth.currentUser != null;
-
-    if (isAuthenticated) {
-      Navigator.of(
-        context,
-        rootNavigator: true,
-      ).pushReplacementNamed(AppRoutes.alertDashboard);
-    } else {
-      Navigator.of(
-        context,
-        rootNavigator: true,
-      ).pushReplacementNamed(AppRoutes.login);
-    }
+    final String destination =
+        isAuthenticated ? AppRoutes.alertDashboard : AppRoutes.login;
+    Navigator.of(context, rootNavigator: true).pushReplacementNamed(destination);
   }
 
   @override
@@ -125,16 +111,16 @@ class _SplashScreenState extends State<SplashScreen>
         body: Container(
           width: double.infinity,
           height: double.infinity,
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                  ? [
-                      theme.colorScheme.primaryContainer,
-                      theme.colorScheme.secondaryContainer,
-                    ]
-                  : [theme.colorScheme.primary, theme.colorScheme.secondary],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF0D0B1A),
+                Color(0xFF1A1428),
+                Color(0xFF2D1B6B),
+              ],
+              stops: [0.0, 0.5, 1.0],
             ),
           ),
           child: SafeArea(
