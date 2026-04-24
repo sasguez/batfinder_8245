@@ -1,20 +1,23 @@
 import 'package:camera/camera.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/anonymous_toggle_widget.dart';
 import './widgets/contact_info_widget.dart';
 import './widgets/datetime_selector_widget.dart';
 import './widgets/description_input_widget.dart';
 import './widgets/incident_type_selector_widget.dart';
+import './widgets/location_picker_page.dart';
 import './widgets/location_selector_widget.dart';
 import './widgets/media_attachment_widget.dart';
 import './widgets/severity_slider_widget.dart';
 
-/// Incident Reporting Screen
-/// Enables users to document and submit safety incidents with multimedia evidence
 class IncidentReporting extends StatefulWidget {
   const IncidentReporting({super.key});
 
@@ -26,6 +29,7 @@ class _IncidentReportingState extends State<IncidentReporting> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _dio = Dio();
 
   String? _selectedIncidentType;
   DateTime _selectedDateTime = DateTime.now();
@@ -34,6 +38,8 @@ class _IncidentReportingState extends State<IncidentReporting> {
   List<XFile> _attachedMedia = [];
   bool _isLoadingLocation = true;
   String _locationText = 'Obteniendo ubicación...';
+  double? _latitude;
+  double? _longitude;
   bool _isSubmitting = false;
   String? _descriptionError;
   String? _phoneError;
@@ -42,25 +48,124 @@ class _IncidentReportingState extends State<IncidentReporting> {
   void initState() {
     super.initState();
     _loadCurrentLocation();
-    _loadDraft();
   }
 
   Future<void> _loadCurrentLocation() async {
-    await Future.delayed(Duration(seconds: 2));
-    if (mounted) {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() {
+            _locationText = 'Servicio de ubicación desactivado';
+            _isLoadingLocation = false;
+          });
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            setState(() {
+              _locationText = 'Permiso de ubicación denegado';
+              _isLoadingLocation = false;
+            });
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() {
+            _locationText = 'Activa la ubicación en Configuración';
+            _isLoadingLocation = false;
+          });
+        }
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+
+      if (!mounted) return;
       setState(() {
-        _locationText = 'Calle 72 #10-34, Bogotá, Colombia';
-        _isLoadingLocation = false;
+        _latitude = position.latitude;
+        _longitude = position.longitude;
       });
+
+      final address = await _reverseGeocode(position.latitude, position.longitude);
+      if (mounted) {
+        setState(() {
+          _locationText = address;
+          _isLoadingLocation = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _locationText = 'No se pudo obtener la ubicación';
+          _isLoadingLocation = false;
+        });
+      }
     }
   }
 
-  Future<void> _loadDraft() async {
-    await Future.delayed(Duration(milliseconds: 500));
+  Future<String> _reverseGeocode(double lat, double lng) async {
+    try {
+      const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+      if (apiKey.isEmpty) {
+        return '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
+      }
+      final response = await _dio.get(
+        'https://maps.googleapis.com/maps/api/geocode/json',
+        queryParameters: {
+          'latlng': '$lat,$lng',
+          'key': apiKey,
+          'language': 'es',
+        },
+      );
+      final results = response.data['results'] as List?;
+      if (results != null && results.isNotEmpty) {
+        return results[0]['formatted_address'] as String;
+      }
+    } catch (_) {}
+    return '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
   }
 
-  Future<void> _saveDraft() async {
-    await Future.delayed(Duration(milliseconds: 300));
+  Future<void> _openLocationPicker() async {
+    if (_latitude == null || _longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Espera a que se obtenga la ubicación.')),
+      );
+      return;
+    }
+    final result = await Navigator.of(context, rootNavigator: true).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerPage(
+          initialPosition: LatLng(_latitude!, _longitude!),
+        ),
+        fullscreenDialog: true,
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _latitude = result.latitude;
+        _longitude = result.longitude;
+        _isLoadingLocation = true;
+        _locationText = 'Actualizando dirección...';
+      });
+      final address = await _reverseGeocode(result.latitude, result.longitude);
+      if (mounted) {
+        setState(() {
+          _locationText = address;
+          _isLoadingLocation = false;
+        });
+      }
+    }
   }
 
   bool _validateForm() {
@@ -68,7 +173,7 @@ class _IncidentReportingState extends State<IncidentReporting> {
 
     if (_selectedIncidentType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Por favor selecciona un tipo de incidente')),
+        const SnackBar(content: Text('Por favor selecciona un tipo de incidente')),
       );
       isValid = false;
     }
@@ -95,31 +200,61 @@ class _IncidentReportingState extends State<IncidentReporting> {
     return isValid;
   }
 
+  String _toEnglishType(String spanishType) {
+    switch (spanishType) {
+      case 'Robo':                 return 'theft';
+      case 'Violencia':            return 'assault';
+      case 'Actividad Sospechosa': return 'suspicious';
+      case 'Emergencia':           return 'emergency';
+      default:                     return 'other';
+    }
+  }
+
+  String _toSeverityString(int level) {
+    if (level <= 2) return 'low';
+    if (level == 3) return 'medium';
+    if (level == 4) return 'high';
+    return 'critical';
+  }
+
   Future<void> _submitReport() async {
     if (!_validateForm()) return;
+
+    if (_latitude == null || _longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Espera a que se obtenga la ubicación e intenta de nuevo.'),
+        ),
+      );
+      return;
+    }
 
     setState(() => _isSubmitting = true);
 
     try {
-      await Future.delayed(Duration(seconds: 2));
+      final incidentId = await SupabaseService.createIncident(
+        title: 'Reporte de ${_selectedIncidentType!}',
+        description: _descriptionController.text.trim(),
+        incidentType: _toEnglishType(_selectedIncidentType!),
+        severity: _toSeverityString(_severity),
+        latitude: _latitude!,
+        longitude: _longitude!,
+        locationAddress: _locationText,
+        isAnonymous: _isAnonymous,
+      );
 
-      if (mounted) {
-        final reportId = 'INC-${DateTime.now().millisecondsSinceEpoch}';
-        _showSuccessDialog(reportId);
-      }
-    } catch (e) {
+      if (mounted) _showSuccessDialog(incidentId);
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al enviar el reporte. Intenta nuevamente.'),
+            content: const Text('Error al enviar el reporte. Intenta nuevamente.'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -132,13 +267,13 @@ class _IncidentReportingState extends State<IncidentReporting> {
         return AlertDialog(
           title: Row(
             children: [
-              CustomIconWidget(
+              const CustomIconWidget(
                 iconName: 'check_circle',
                 color: Color(0xFF4CAF50),
                 size: 28,
               ),
               SizedBox(width: 2.w),
-              Text('Reporte Enviado'),
+              const Text('Reporte Enviado'),
             ],
           ),
           content: Column(
@@ -146,7 +281,7 @@ class _IncidentReportingState extends State<IncidentReporting> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Tu reporte ha sido enviado exitosamente.',
+                'Tu reporte ha sido registrado y ya es visible para tu comunidad.',
                 style: theme.textTheme.bodyMedium,
               ),
               SizedBox(height: 2.h),
@@ -186,7 +321,7 @@ class _IncidentReportingState extends State<IncidentReporting> {
                   SizedBox(width: 2.w),
                   Expanded(
                     child: Text(
-                      'Tiempo estimado de respuesta: 15-30 minutos',
+                      'Tiempo estimado de respuesta: 15–30 minutos',
                       style: theme.textTheme.bodySmall,
                     ),
                   ),
@@ -200,7 +335,7 @@ class _IncidentReportingState extends State<IncidentReporting> {
                 Navigator.of(context).pop();
                 Navigator.of(context, rootNavigator: true).pop();
               },
-              child: Text('Cerrar'),
+              child: const Text('Cerrar'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -210,7 +345,7 @@ class _IncidentReportingState extends State<IncidentReporting> {
                   rootNavigator: true,
                 ).pushNamed('/alert-dashboard');
               },
-              child: Text('Ver Alertas'),
+              child: const Text('Ver Alertas'),
             ),
           ],
         );
@@ -222,6 +357,7 @@ class _IncidentReportingState extends State<IncidentReporting> {
   void dispose() {
     _descriptionController.dispose();
     _phoneController.dispose();
+    _dio.close();
     super.dispose();
   }
 
@@ -237,14 +373,11 @@ class _IncidentReportingState extends State<IncidentReporting> {
             color: theme.colorScheme.onSurface,
             size: 24,
           ),
-          onPressed: () async {
-            await _saveDraft();
-            if (mounted) {
-              Navigator.of(context, rootNavigator: true).pop();
-            }
+          onPressed: () {
+            if (mounted) Navigator.of(context, rootNavigator: true).pop();
           },
         ),
-        title: Text('Reportar Incidente'),
+        title: const Text('Reportar Incidente'),
         actions: [
           if (_isSubmitting)
             Padding(
@@ -271,26 +404,21 @@ class _IncidentReportingState extends State<IncidentReporting> {
           children: [
             IncidentTypeSelectorWidget(
               selectedType: _selectedIncidentType,
-              onTypeSelected: (type) {
-                setState(() => _selectedIncidentType = type);
-              },
+              onTypeSelected: (type) => setState(() => _selectedIncidentType = type),
             ),
             SizedBox(height: 3.h),
             LocationSelectorWidget(
               locationText: _locationText,
               isLoadingLocation: _isLoadingLocation,
-              onAdjustLocation: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Ajustar ubicación en el mapa')),
-                );
-              },
+              latitude: _latitude,
+              longitude: _longitude,
+              onAdjustLocation: _openLocationPicker,
             ),
             SizedBox(height: 3.h),
             DateTimeSelectorWidget(
               selectedDateTime: _selectedDateTime,
-              onDateTimeChanged: (dateTime) {
-                setState(() => _selectedDateTime = dateTime);
-              },
+              onDateTimeChanged: (dateTime) =>
+                  setState(() => _selectedDateTime = dateTime),
             ),
             SizedBox(height: 3.h),
             DescriptionInputWidget(
@@ -300,9 +428,7 @@ class _IncidentReportingState extends State<IncidentReporting> {
             SizedBox(height: 3.h),
             MediaAttachmentWidget(
               attachedMedia: _attachedMedia,
-              onMediaChanged: (media) {
-                setState(() => _attachedMedia = media);
-              },
+              onMediaChanged: (media) => setState(() => _attachedMedia = media),
             ),
             SizedBox(height: 3.h),
             AnonymousToggleWidget(
@@ -320,9 +446,7 @@ class _IncidentReportingState extends State<IncidentReporting> {
             SizedBox(height: 3.h),
             SeveritySliderWidget(
               severity: _severity,
-              onSeverityChanged: (value) {
-                setState(() => _severity = value);
-              },
+              onSeverityChanged: (value) => setState(() => _severity = value),
             ),
             SizedBox(height: 3.h),
             ContactInfoWidget(
@@ -351,10 +475,10 @@ class _IncidentReportingState extends State<IncidentReporting> {
                           ),
                         ),
                         SizedBox(width: 3.w),
-                        Text('Enviando...'),
+                        const Text('Enviando...'),
                       ],
                     )
-                  : Text('Enviar Reporte'),
+                  : const Text('Enviar Reporte'),
             ),
             SizedBox(height: 2.h),
           ],

@@ -33,11 +33,9 @@ class _AlertDashboardInitialPageState
 
   static const Map<String, String> _typeLabels = {
     'theft': 'Robo',
-    'assault': 'Agresión',
-    'suspicious_activity': 'Actividad Sospechosa',
+    'assault': 'Violencia',
+    'suspicious': 'Actividad Sospechosa',
     'emergency': 'Emergencia',
-    'accident': 'Accidente',
-    'fire': 'Incendio',
     'vandalism': 'Vandalismo',
     'other': 'Otro',
   };
@@ -45,10 +43,8 @@ class _AlertDashboardInitialPageState
   static const Map<String, String> _typeIcons = {
     'theft': 'local_police',
     'assault': 'warning',
-    'suspicious_activity': 'visibility',
+    'suspicious': 'visibility',
     'emergency': 'emergency',
-    'accident': 'car_crash',
-    'fire': 'local_fire_department',
     'vandalism': 'broken_image',
     'other': 'report_problem',
   };
