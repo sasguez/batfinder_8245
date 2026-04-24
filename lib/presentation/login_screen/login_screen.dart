@@ -93,21 +93,17 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _handleSocialLogin(String provider) async {
+  Future<void> _handleGoogleLogin() async {
     try {
       setState(() => _isLoading = true);
-      if (provider == 'Google') {
-        await SupabaseService.signInWithGoogle();
-      } else if (provider == 'Facebook') {
-        await SupabaseService.signInWithFacebook();
-      }
+      await SupabaseService.signInWithGoogle();
       if (mounted) {
         Navigator.of(context, rootNavigator: true)
             .pushReplacementNamed(AppRoutes.alertDashboard);
       }
     } catch (e) {
       if (mounted) {
-        _showErrorDialog('Error al conectar con $provider. Intenta de nuevo.');
+        _showErrorDialog('Error al conectar con Google. Intenta de nuevo.');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -255,8 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(height: 4.h),
 
                 SocialLoginButtons(
-                  onGoogleLogin: () => _handleSocialLogin('Google'),
-                  onFacebookLogin: () => _handleSocialLogin('Facebook'),
+                  onGoogleLogin: _handleGoogleLogin,
                 ),
                 SizedBox(height: 3.h),
 

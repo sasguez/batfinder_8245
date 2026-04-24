@@ -3,7 +3,6 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/supabase_service.dart';
-import '../../widgets/custom_icon_widget.dart';
 import './widgets/action_buttons_widget.dart';
 import './widgets/comments_section_widget.dart';
 import './widgets/emergency_contact_widget.dart';

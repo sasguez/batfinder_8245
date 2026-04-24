@@ -22,8 +22,8 @@ class ChatMessageWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final messageType = message["type"] as String;
-    final isAuthority = message["isAuthority"] as bool;
+    final messageType = (message["type"] as String?) ?? 'text';
+    final isAuthority = (message["isAuthority"] as bool?) ?? false;
 
     return Padding(
       padding: EdgeInsets.only(bottom: 2.h),

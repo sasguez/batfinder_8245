@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/app_export.dart';
-import '../../widgets/custom_icon_widget.dart';
+import '../../services/supabase_service.dart';
 import './widgets/chat_input_widget.dart';
 import './widgets/chat_list_item_widget.dart';
 import './widgets/chat_message_widget.dart';
 
-/// Community Safety Chat Screen
-/// Facilitates secure communication between citizens, authorities, and NGOs
-/// Tab navigation with Chat tab active
 class CommunitySafetyChat extends StatefulWidget {
   const CommunitySafetyChat({super.key});
 
@@ -18,253 +16,225 @@ class CommunitySafetyChat extends StatefulWidget {
   State<CommunitySafetyChat> createState() => _CommunitySafetyChatState();
 }
 
-class _CommunitySafetyChatState extends State<CommunitySafetyChat>
-    with SingleTickerProviderStateMixin {
+class _CommunitySafetyChatState extends State<CommunitySafetyChat> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
   bool _isSearching = false;
   String? _selectedChatId;
+  String? _selectedChatName;
   bool _isTyping = false;
+  bool _isLoadingRooms = true;
+  bool _isLoadingMessages = false;
+  bool _isSending = false;
 
-  // Mock chat rooms data
-  final List<Map<String, dynamic>> _chatRooms = [
-    {
-      "id": "chat_001",
-      "name": "Chapinero Norte - Seguridad",
-      "type": "neighborhood",
-      "lastMessage": "Patrulla policial reportada en Calle 72",
-      "timestamp": DateTime.now().subtract(Duration(minutes: 5)),
-      "unreadCount": 3,
-      "avatar":
-          "https://images.unsplash.com/photo-1695454507598-39fb421afb74",
-      "semanticLabel":
-          "Aerial view of Chapinero neighborhood with residential buildings and green spaces",
-      "isEncrypted": true,
-      "participants": 156,
-      "lastSender": "Oficial Rodríguez",
-    },
-    {
-      "id": "chat_002",
-      "name": "Alerta: Robo en Usaquén",
-      "type": "incident",
-      "lastMessage": "Sospechoso detenido, situación controlada",
-      "timestamp": DateTime.now().subtract(Duration(minutes: 15)),
-      "unreadCount": 0,
-      "avatar":
-          "https://images.unsplash.com/photo-1606007349182-207c2964d299",
-      "semanticLabel":
-          "Police officer in uniform standing near patrol car at night",
-      "isEncrypted": true,
-      "participants": 45,
-      "lastSender": "Comandante Silva",
-    },
-    {
-      "id": "chat_003",
-      "name": "Avisos Policía Nacional",
-      "type": "authority",
-      "lastMessage": "Operativo de seguridad este fin de semana",
-      "timestamp": DateTime.now().subtract(Duration(hours: 1)),
-      "unreadCount": 1,
-      "avatar":
-          "https://img.rocket.new/generatedImages/rocket_gen_img_1f0ab5492-1768342129691.png",
-      "semanticLabel":
-          "Colombian police badge and official emblem on dark blue uniform",
-      "isEncrypted": true,
-      "participants": 2340,
-      "lastSender": "Policía Nacional",
-    },
-    {
-      "id": "chat_004",
-      "name": "Coordinación Emergencias",
-      "type": "emergency",
-      "lastMessage": "Ambulancia en camino a Cra 7 con 85",
-      "timestamp": DateTime.now().subtract(Duration(hours: 2)),
-      "unreadCount": 0,
-      "avatar":
-          "https://img.rocket.new/generatedImages/rocket_gen_img_14c023e35-1764749886822.png",
-      "semanticLabel":
-          "Emergency response team with red cross ambulance and medical equipment",
-      "isEncrypted": true,
-      "participants": 23,
-      "lastSender": "Cruz Roja",
-    },
-    {
-      "id": "chat_005",
-      "name": "Suba - Vigilancia Vecinal",
-      "type": "neighborhood",
-      "lastMessage": "Reunión de seguridad mañana 6pm",
-      "timestamp": DateTime.now().subtract(Duration(hours: 3)),
-      "unreadCount": 5,
-      "avatar":
-          "https://images.unsplash.com/photo-1511584221885-5f4e4bcf4570",
-      "semanticLabel":
-          "Residential neighborhood street with houses and community watch sign",
-      "isEncrypted": true,
-      "participants": 89,
-      "lastSender": "María González",
-    },
-    {
-      "id": "chat_006",
-      "name": "ONG Seguridad Ciudadana",
-      "type": "ngo",
-      "lastMessage": "Taller de prevención este sábado",
-      "timestamp": DateTime.now().subtract(Duration(hours: 5)),
-      "unreadCount": 0,
-      "avatar":
-          "https://img.rocket.new/generatedImages/rocket_gen_img_15e1bd1a8-1767910541627.png",
-      "semanticLabel":
-          "Community volunteers in safety vests organizing neighborhood watch program",
-      "isEncrypted": true,
-      "participants": 234,
-      "lastSender": "Fundación Paz",
-    },
-  ];
+  List<Map<String, dynamic>> _chatRooms = [];
+  List<Map<String, dynamic>> _messages = [];
+  RealtimeChannel? _chatChannel;
 
-  // Mock messages for selected chat
-  List<Map<String, dynamic>> _getMessagesForChat(String chatId) {
-    return [
-      {
-        "id": "msg_001",
-        "senderId": "user_123",
-        "senderName": "Oficial Rodríguez",
-        "senderAvatar":
-            "https://img.rocket.new/generatedImages/rocket_gen_img_1a906f7b2-1763294156295.png",
-        "semanticLabel":
-            "Profile photo of police officer in uniform with short dark hair",
-        "message":
-            "Patrulla policial reportada en Calle 72 con Carrera 7. Todo tranquilo en la zona.",
-        "timestamp": DateTime.now().subtract(Duration(minutes: 5)),
-        "type": "text",
-        "isAuthority": true,
-        "isRead": true,
-      },
-      {
-        "id": "msg_002",
-        "senderId": "user_456",
-        "senderName": "Ana Martínez",
-        "senderAvatar":
-            "https://img.rocket.new/generatedImages/rocket_gen_img_1bc8b4514-1763299107061.png",
-        "semanticLabel":
-            "Profile photo of woman with long brown hair wearing casual clothing",
-        "message":
-            "Gracias por la información. ¿Hasta qué hora estará la patrulla?",
-        "timestamp": DateTime.now().subtract(Duration(minutes: 4)),
-        "type": "text",
-        "isAuthority": false,
-        "isRead": true,
-      },
-      {
-        "id": "msg_003",
-        "senderId": "user_123",
-        "senderName": "Oficial Rodríguez",
-        "senderAvatar":
-            "https://img.rocket.new/generatedImages/rocket_gen_img_1a906f7b2-1763294156295.png",
-        "semanticLabel":
-            "Profile photo of police officer in uniform with short dark hair",
-        "message":
-            "Estaremos hasta las 10pm. Pueden contactarnos al 123 para emergencias.",
-        "timestamp": DateTime.now().subtract(Duration(minutes: 3)),
-        "type": "text",
-        "isAuthority": true,
-        "isRead": true,
-      },
-      {
-        "id": "msg_004",
-        "senderId": "user_789",
-        "senderName": "Carlos Pérez",
-        "senderAvatar":
-            "https://img.rocket.new/generatedImages/rocket_gen_img_17f889464-1763294308784.png",
-        "semanticLabel":
-            "Profile photo of middle-aged man with glasses and gray hair",
-        "message": null,
-        "timestamp": DateTime.now().subtract(Duration(minutes: 2)),
-        "type": "location",
-        "isAuthority": false,
-        "isRead": true,
-        "locationData": {
-          "latitude": 4.6533,
-          "longitude": -74.0836,
-          "address": "Calle 72 #7-45, Chapinero",
-        },
-      },
-      {
-        "id": "msg_005",
-        "senderId": "user_456",
-        "senderName": "Ana Martínez",
-        "senderAvatar":
-            "https://img.rocket.new/generatedImages/rocket_gen_img_1bc8b4514-1763299107061.png",
-        "semanticLabel":
-            "Profile photo of woman with long brown hair wearing casual clothing",
-        "message": null,
-        "timestamp": DateTime.now().subtract(Duration(minutes: 1)),
-        "type": "image",
-        "isAuthority": false,
-        "isRead": false,
-        "imageUrl":
-            "https://images.unsplash.com/photo-1716156484930-867e2753c01d",
-        "imageSemanticLabel":
-            "Street view of Chapinero neighborhood showing police patrol car parked on residential street",
-      },
-    ];
+  @override
+  void initState() {
+    super.initState();
+    _loadChatRooms();
   }
 
-  List<Map<String, dynamic>> get _filteredChatRooms {
-    if (_searchController.text.isEmpty) {
-      return _chatRooms;
+  @override
+  void dispose() {
+    _chatChannel?.unsubscribe();
+    _searchController.dispose();
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadChatRooms() async {
+    setState(() => _isLoadingRooms = true);
+    try {
+      final rooms = await SupabaseService.getAllChatRooms();
+      if (mounted) {
+        setState(() {
+          _chatRooms = rooms.map(_normalizeRoom).toList();
+          _isLoadingRooms = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingRooms = false);
     }
-    return _chatRooms.where((chat) {
-      return (chat["name"] as String).toLowerCase().contains(
-            _searchController.text.toLowerCase(),
-          ) ||
-          (chat["lastMessage"] as String).toLowerCase().contains(
-            _searchController.text.toLowerCase(),
-          );
-    }).toList();
   }
 
-  void _selectChat(String chatId) {
+  Map<String, dynamic> _normalizeRoom(Map<String, dynamic> raw) {
+    DateTime timestamp;
+    final updatedAt = raw['updated_at'] as String?;
+    final createdAt = raw['created_at'] as String?;
+    if (updatedAt != null) {
+      timestamp = DateTime.parse(updatedAt);
+    } else if (createdAt != null) {
+      timestamp = DateTime.parse(createdAt);
+    } else {
+      timestamp = DateTime.now();
+    }
+
+    return {
+      'id': raw['id'],
+      'name': raw['name'] as String? ?? 'Sala de Chat',
+      'type': raw['type'] as String? ?? 'neighborhood',
+      'lastMessage': raw['last_message'] as String? ?? 'Sin mensajes aún',
+      'timestamp': timestamp,
+      'unreadCount': (raw['unread_count'] as int?) ?? 0,
+      'avatar': raw['avatar_url'] as String? ?? '',
+      'semanticLabel': 'Sala de chat: ${raw['name'] ?? ''}',
+      'isEncrypted': true,
+      'participants': (raw['member_count'] as int?) ?? 0,
+      'lastSender': raw['last_sender'] as String?,
+    };
+  }
+
+  Map<String, dynamic> _normalizeMessage(Map<String, dynamic> raw) {
+    final sender = raw['sender'] as Map<String, dynamic>?;
+    final createdAt = raw['created_at'] as String?;
+    final currentUserId = SupabaseService.currentUserId;
+    return {
+      'id': raw['id'],
+      'senderId': raw['sender_id'],
+      'senderName': sender?['full_name'] as String? ?? 'Usuario',
+      'senderAvatar': sender?['avatar_url'] as String? ?? '',
+      'semanticLabel': 'Foto de perfil',
+      'message': raw['message'] as String? ?? '',
+      'timestamp': createdAt != null ? DateTime.parse(createdAt) : DateTime.now(),
+      'type': 'text',
+      'isAuthority': (sender?['role'] as String?) == 'authority',
+      'isRead': true,
+      'isCurrentUser': raw['sender_id'] == currentUserId,
+    };
+  }
+
+  Future<void> _selectChat(String chatId, String chatName) async {
+    await _chatChannel?.unsubscribe();
     setState(() {
       _selectedChatId = chatId;
-      // Mark messages as read
-      final chatIndex = _chatRooms.indexWhere((chat) => chat["id"] == chatId);
-      if (chatIndex != -1) {
-        _chatRooms[chatIndex]["unreadCount"] = 0;
-      }
+      _selectedChatName = chatName;
+      _messages = [];
+      _isLoadingMessages = true;
+    });
+    HapticFeedback.lightImpact();
+    await _loadMessages(chatId);
+    _subscribeToMessages(chatId);
+  }
+
+  Future<void> _goBackToList() async {
+    await _chatChannel?.unsubscribe();
+    _chatChannel = null;
+    setState(() {
+      _selectedChatId = null;
+      _selectedChatName = null;
+      _messages = [];
     });
     HapticFeedback.lightImpact();
   }
 
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
+  Future<void> _loadMessages(String roomId) async {
+    try {
+      final msgs = await SupabaseService.getChatMessages(roomId);
+      if (mounted) {
+        setState(() {
+          _messages = msgs.map(_normalizeMessage).toList();
+          _isLoadingMessages = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMessages = false);
+    }
+  }
 
-    setState(() {
-      _isTyping = false;
-      _messageController.clear();
+  void _subscribeToMessages(String roomId) {
+    _chatChannel = SupabaseService.subscribeToChatMessages(roomId, (raw) {
+      // Skip messages from the current user — already inserted optimistically
+      if (raw['sender_id'] == SupabaseService.currentUserId) return;
+      final msg = _normalizeMessage(raw);
+      if (mounted) {
+        setState(() => _messages.add(msg));
+        _scrollToBottom();
+      }
     });
+  }
 
-    HapticFeedback.mediumImpact();
-
-    // Scroll to bottom after sending
-    Future.delayed(Duration(milliseconds: 100), () {
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
       }
     });
   }
 
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _selectedChatId == null || _isSending) return;
+
+    final tempId = 'tmp_${DateTime.now().millisecondsSinceEpoch}';
+    final optimistic = {
+      'id': tempId,
+      'senderId': SupabaseService.currentUserId,
+      'senderName': 'Tú',
+      'senderAvatar': '',
+      'semanticLabel': 'Tu foto de perfil',
+      'message': text,
+      'timestamp': DateTime.now(),
+      'type': 'text',
+      'isAuthority': false,
+      'isRead': false,
+      'isCurrentUser': true,
+    };
+
+    setState(() {
+      _isTyping = false;
+      _isSending = true;
+      _messages.add(optimistic);
+    });
+    _messageController.clear();
+    HapticFeedback.mediumImpact();
+    _scrollToBottom();
+
+    try {
+      await SupabaseService.sendMessage(
+        roomId: _selectedChatId!,
+        message: text,
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() => _messages.removeWhere((m) => m['id'] == tempId));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('No se pudo enviar el mensaje. Intenta de nuevo.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredChatRooms {
+    if (_searchController.text.isEmpty) return _chatRooms;
+    final q = _searchController.text.toLowerCase();
+    return _chatRooms.where((chat) {
+      return (chat['name'] as String).toLowerCase().contains(q) ||
+          (chat['lastMessage'] as String).toLowerCase().contains(q);
+    }).toList();
+  }
+
   void _showChatOptions(BuildContext context) {
     final theme = Theme.of(context);
-
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.bottomSheetTheme.backgroundColor,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) => SafeArea(
@@ -277,10 +247,7 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
                 color: theme.colorScheme.primary,
                 size: 24,
               ),
-              title: Text(
-                'Crear grupo nuevo',
-                style: theme.textTheme.bodyLarge,
-              ),
+              title: Text('Crear grupo nuevo', style: theme.textTheme.bodyLarge),
               onTap: () {
                 Navigator.pop(context);
                 HapticFeedback.lightImpact();
@@ -292,10 +259,7 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
                 color: theme.colorScheme.primary,
                 size: 24,
               ),
-              title: Text(
-                'Buscar por ubicación',
-                style: theme.textTheme.bodyLarge,
-              ),
+              title: Text('Buscar por ubicación', style: theme.textTheme.bodyLarge),
               onTap: () {
                 Navigator.pop(context);
                 HapticFeedback.lightImpact();
@@ -321,20 +285,11 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Column(
       children: [
-        // Custom App Bar
         Container(
           padding: EdgeInsets.only(
             top: MediaQuery.of(context).padding.top,
@@ -348,7 +303,7 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 4,
-                offset: Offset(0, 2),
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -356,25 +311,21 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
             children: [
               Row(
                 children: [
-                  _selectedChatId != null
-                      ? IconButton(
-                          icon: CustomIconWidget(
-                            iconName: 'arrow_back',
-                            color: theme.colorScheme.onSurface,
-                            size: 24,
-                          ),
-                          onPressed: () {
-                            setState(() => _selectedChatId = null);
-                            HapticFeedback.lightImpact();
-                          },
-                        )
-                      : SizedBox.shrink(),
+                  if (_selectedChatId != null)
+                    IconButton(
+                      icon: CustomIconWidget(
+                        iconName: 'arrow_back',
+                        color: theme.colorScheme.onSurface,
+                        size: 24,
+                      ),
+                      onPressed: _goBackToList,
+                    )
+                  else
+                    const SizedBox.shrink(),
                   Expanded(
                     child: Text(
                       _selectedChatId != null
-                          ? _chatRooms.firstWhere(
-                              (chat) => chat["id"] == _selectedChatId,
-                            )["name"]
+                          ? (_selectedChatName ?? 'Chat')
                           : 'Chat de Seguridad',
                       style: theme.textTheme.titleLarge,
                       overflow: TextOverflow.ellipsis,
@@ -397,9 +348,7 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
                     onPressed: () {
                       setState(() {
                         _isSearching = !_isSearching;
-                        if (!_isSearching) {
-                          _searchController.clear();
-                        }
+                        if (!_isSearching) _searchController.clear();
                       });
                       HapticFeedback.lightImpact();
                     },
@@ -421,7 +370,7 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Buscar conversaciones...',
-                    prefixIcon: Icon(Icons.search, size: 20),
+                    prefixIcon: const Icon(Icons.search, size: 20),
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 4.w,
                       vertical: 1.h,
@@ -442,14 +391,13 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
                       ),
                     ),
                   ),
-                  onChanged: (value) => setState(() {}),
+                  onChanged: (_) => setState(() {}),
                 ),
               ],
             ],
           ),
         ),
 
-        // Content Area
         Expanded(
           child: _selectedChatId == null
               ? _buildChatList(theme)
@@ -460,51 +408,61 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
   }
 
   Widget _buildChatList(ThemeData theme) {
-    return _filteredChatRooms.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CustomIconWidget(
-                  iconName: 'chat_bubble_outline',
-                  color: theme.colorScheme.onSurfaceVariant,
-                  size: 64,
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  'No se encontraron conversaciones',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+    if (_isLoadingRooms) {
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
+      );
+    }
+
+    if (_filteredChatRooms.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CustomIconWidget(
+              iconName: 'chat_bubble_outline',
+              color: theme.colorScheme.onSurfaceVariant,
+              size: 64,
             ),
-          )
-        : ListView.separated(
-            padding: EdgeInsets.symmetric(vertical: 1.h),
-            itemCount: _filteredChatRooms.length,
-            separatorBuilder: (context, index) => Divider(
-              height: 1,
-              thickness: 1,
-              indent: 20.w,
-              color: theme.dividerColor,
+            SizedBox(height: 2.h),
+            Text(
+              _searchController.text.isEmpty
+                  ? 'No hay conversaciones disponibles'
+                  : 'No se encontraron conversaciones',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-            itemBuilder: (context, index) {
-              final chat = _filteredChatRooms[index];
-              return ChatListItemWidget(
-                chat: chat,
-                onTap: () => _selectChat(chat["id"]),
-              );
-            },
-          );
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: EdgeInsets.symmetric(vertical: 1.h),
+      itemCount: _filteredChatRooms.length,
+      separatorBuilder: (context, index) => Divider(
+        height: 1,
+        thickness: 1,
+        indent: 20.w,
+        color: theme.dividerColor,
+      ),
+      itemBuilder: (context, index) {
+        final chat = _filteredChatRooms[index];
+        return ChatListItemWidget(
+          chat: chat,
+          onTap: () => _selectChat(
+            chat['id'] as String,
+            chat['name'] as String,
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildChatMessages(ThemeData theme) {
-    final messages = _getMessagesForChat(_selectedChatId!);
-
     return Column(
       children: [
-        // Encryption indicator
         Container(
           padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
           color: theme.colorScheme.primary.withValues(alpha: 0.1),
@@ -528,23 +486,40 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
           ),
         ),
 
-        // Messages list
         Expanded(
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
-            itemCount: messages.length,
-            itemBuilder: (context, index) {
-              final message = messages[index];
-              return ChatMessageWidget(
-                message: message,
-                isCurrentUser: message["senderId"] != "user_123",
-              );
-            },
-          ),
+          child: _isLoadingMessages
+              ? Center(
+                  child: CircularProgressIndicator(
+                    color: theme.colorScheme.primary,
+                  ),
+                )
+              : _messages.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Sé el primero en enviar un mensaje',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 4.w,
+                        vertical: 2.h,
+                      ),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        final message = _messages[index];
+                        return ChatMessageWidget(
+                          message: message,
+                          isCurrentUser:
+                              (message['isCurrentUser'] as bool?) ?? false,
+                        );
+                      },
+                    ),
         ),
 
-        // Typing indicator
         if (_isTyping)
           Container(
             padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
@@ -561,13 +536,10 @@ class _CommunitySafetyChatState extends State<CommunitySafetyChat>
             ),
           ),
 
-        // Message input
         ChatInputWidget(
           controller: _messageController,
           onSend: _sendMessage,
-          onTypingChanged: (isTyping) {
-            setState(() => _isTyping = isTyping);
-          },
+          onTypingChanged: (isTyping) => setState(() => _isTyping = isTyping),
         ),
       ],
     );

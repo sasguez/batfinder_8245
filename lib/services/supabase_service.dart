@@ -100,11 +100,13 @@ class SupabaseService {
     required Map<String, dynamic> metadata,
   }) async {
     try {
-      return await client.auth.signUp(
+      final response = await client.auth.signUp(
         email: email,
         password: password,
         data: metadata,
       );
+      await ensureUserProfile();
+      return response;
     } catch (e) {
       if (kDebugMode) print('❌ Sign up error: $e');
       rethrow;
@@ -282,6 +284,18 @@ class SupabaseService {
   // =============================
   // CHAT
   // =============================
+  static Future<List<Map<String, dynamic>>> getAllChatRooms() async {
+    try {
+      return await client
+          .from('chat_rooms')
+          .select()
+          .limit(50);
+    } catch (e) {
+      if (kDebugMode) print('❌ Get all chat rooms error: $e');
+      return [];
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getChatRooms() async {
     try {
       final userId = currentUserId;
