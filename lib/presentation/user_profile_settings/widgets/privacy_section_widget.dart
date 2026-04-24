@@ -230,7 +230,7 @@ class _PrivacySectionWidgetState extends State<PrivacySectionWidget> {
   ) {
     final theme = Theme.of(context);
     final isSelected = _locationAccuracy == value;
-
+    //"cambios"
     return InkWell(
       onTap: () {
         setState(() => _locationAccuracy = value);

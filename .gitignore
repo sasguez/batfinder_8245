@@ -53,3 +53,8 @@ ios.*.AppDelegate.swift
 *.apk
 # Prueba
 /env.json
+#claude folder
+.claude/
+.vscode/
+/launch.json
+/devtools_options.yaml
