@@ -51,6 +51,23 @@ class AlertDashboardState extends State<AlertDashboard> {
     super.dispose();
   }
 
+  void switchTab(int index) {
+    if (index < 0 || index >= routes.length) return;
+    if (!AppRoutes.routes.containsKey(routes[index])) return;
+    if (currentIndex == index) return;
+    setState(() => currentIndex = index);
+    navigatorKey.currentState?.pushReplacementNamed(routes[index]);
+  }
+
+  void updatePanicTaps(int taps) {
+    _powerDetector?.dispose();
+    _powerDetector = PowerButtonDetectorService(
+      requiredTaps: taps,
+      onTrigger: _activatePanicMode,
+    );
+    _powerDetector!.start();
+  }
+
   void _activatePanicMode() {
     if (!mounted) return;
     HapticFeedback.heavyImpact();
@@ -84,19 +101,14 @@ class AlertDashboardState extends State<AlertDashboard> {
           }
         },
       ),
-      bottomNavigationBar: CustomBottomBar(
-        currentIndex: currentIndex,
-        onTap: (index) {
-          // For the routes that are not in the AppRoutes.routes, do not navigate to them.
-          if (!AppRoutes.routes.containsKey(routes[index])) {
-            return;
-          }
-          if (currentIndex != index) {
-            setState(() => currentIndex = index);
-            navigatorKey.currentState?.pushReplacementNamed(routes[index]);
-          }
-        },
-      ),
+      // El mapa maneja su propio bottom nav (el platform view de GoogleMap
+      // puede cubrir el bottom nav del Scaffold exterior en algunos dispositivos Android).
+      bottomNavigationBar: currentIndex == 1
+          ? null
+          : CustomBottomBar(
+              currentIndex: currentIndex,
+              onTap: switchTab,
+            ),
     );
   }
 }

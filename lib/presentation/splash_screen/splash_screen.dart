@@ -246,7 +246,7 @@ class _SplashScreenState extends State<SplashScreen>
                 SizedBox(height: 4.h),
                 // Version info
                 Text(
-                  'Versión 1.0.0',
+                  'Versión 1.1.6',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 9.sp,

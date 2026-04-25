@@ -567,4 +567,19 @@ class SupabaseService {
       rethrow;
     }
   }
+
+  // =============================
+  // EMAIL VERIFICATION
+  // =============================
+  static Future<void> resendVerificationEmail(String email) async {
+    try {
+      await client.auth.resend(
+        type: OtpType.signup,
+        email: email,
+      );
+    } catch (e) {
+      if (kDebugMode) print('❌ Resend verification email error: $e');
+      rethrow;
+    }
+  }
 }

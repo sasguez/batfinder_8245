@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../alert_dashboard/alert_dashboard.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
 /// Widget de configuración para activación del modo pánico
 /// mediante el botón de bloqueo del dispositivo.
 /// Persiste la preferencia en SharedPreferences con la clave
-/// 'power_button_required_taps'.
+/// 'power_button_required_taps' y aplica el cambio de inmediato.
 class PanicButtonSettingsWidget extends StatefulWidget {
   const PanicButtonSettingsWidget({super.key});
 
@@ -29,16 +30,19 @@ class _PanicButtonSettingsWidgetState extends State<PanicButtonSettingsWidget> {
   Future<void> _loadPreference() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
-      setState(() {
-        _requiredTaps = prefs.getInt(_prefKey) ?? 3;
-      });
+      setState(() => _requiredTaps = prefs.getInt(_prefKey) ?? 3);
     }
   }
 
   Future<void> _saveTaps(int value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_prefKey, value);
-    if (mounted) setState(() => _requiredTaps = value);
+    if (!mounted) return;
+    setState(() => _requiredTaps = value);
+    // Aplica inmediatamente sin reiniciar la app
+    context
+        .findAncestorStateOfType<AlertDashboardState>()
+        ?.updatePanicTaps(value);
   }
 
   @override
@@ -65,10 +69,12 @@ class _PanicButtonSettingsWidgetState extends State<PanicButtonSettingsWidget> {
                   size: 20,
                 ),
                 SizedBox(width: 3.w),
-                Text(
-                  'Activación por Botón de Bloqueo',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    'Activación por Botón de Bloqueo',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -84,25 +90,24 @@ class _PanicButtonSettingsWidgetState extends State<PanicButtonSettingsWidget> {
             ),
           ),
           SizedBox(height: 1.h),
-          Divider(height: 1, thickness: 1),
+          const Divider(height: 1, thickness: 1),
           RadioGroup<int>(
             groupValue: _requiredTaps,
-            onChanged: (val) {
-              if (val != null) _saveTaps(val);
-            },
+            onChanged: (val) { if (val != null) _saveTaps(val); },
             child: Column(
               children: [
                 RadioListTile<int>(
                   value: 2,
+                  activeColor: theme.colorScheme.primary,
                   title: Text('Doble toque', style: theme.textTheme.bodyLarge),
                   subtitle: Text(
                     '2 pulsaciones rápidas del botón de bloqueo',
                     style: theme.textTheme.bodySmall,
                   ),
-                  activeColor: theme.colorScheme.primary,
                 ),
                 RadioListTile<int>(
                   value: 3,
+                  activeColor: theme.colorScheme.primary,
                   title: Text(
                     'Triple toque (recomendado)',
                     style: theme.textTheme.bodyLarge,
@@ -111,7 +116,6 @@ class _PanicButtonSettingsWidgetState extends State<PanicButtonSettingsWidget> {
                     '3 pulsaciones rápidas — menor riesgo de activación accidental',
                     style: theme.textTheme.bodySmall,
                   ),
-                  activeColor: theme.colorScheme.primary,
                 ),
               ],
             ),
@@ -129,7 +133,7 @@ class _PanicButtonSettingsWidgetState extends State<PanicButtonSettingsWidget> {
                 SizedBox(width: 2.w),
                 Expanded(
                   child: Text(
-                    'En iOS puede haber mayor latencia en la detección. Los cambios se aplican al reiniciar la app.',
+                    'La configuración se aplica de inmediato. En iOS puede haber mayor latencia en la detección.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

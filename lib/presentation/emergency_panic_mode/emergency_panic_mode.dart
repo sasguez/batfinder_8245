@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -188,7 +189,7 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
 
       // Get initial position
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
 
       if (!mounted) return;
@@ -223,10 +224,10 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
   Future<void> _startAudioRecording() async {
     try {
       if (await _audioRecorder.hasPermission()) {
-        await _audioRecorder.start(
-          const RecordConfig(),
-          path: 'emergency_recording.m4a',
-        );
+        final dir = await getTemporaryDirectory();
+        final path =
+            '${dir.path}/emergency_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        await _audioRecorder.start(const RecordConfig(), path: path);
 
         if (!mounted) return;
 
@@ -458,10 +459,10 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return WillPopScope(
-      onWillPop: () async {
-        await _cancelEmergencyMode();
-        return false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (!didPop) await _cancelEmergencyMode();
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,

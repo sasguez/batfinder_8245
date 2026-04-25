@@ -68,7 +68,7 @@ class _UserProfileSettingsState extends State<UserProfileSettings> {
           (p['reputation_score'] as num?)?.toDouble() ?? 0.0,
       'totalReports': (p['total_reports'] as num?)?.toInt() ?? 0,
       'verifiedPhone': p['is_phone_verified'] ?? false,
-      'verifiedEmail': p['is_email_verified'] ?? false,
+      'verifiedEmail': SupabaseService.currentUser?.emailConfirmedAt != null,
       'verifiedDocuments': p['is_documents_verified'] ?? false,
     };
   }
@@ -200,6 +200,7 @@ class _UserProfileSettingsState extends State<UserProfileSettings> {
                       AccountSectionWidget(
                         userData: _userData,
                         isGoogleUser: SupabaseService.isGoogleUser,
+                        onProfileUpdated: _loadUserProfile,
                       ),
                       SizedBox(height: 2.h),
                       // PrivacySectionWidget(),
@@ -216,7 +217,10 @@ class _UserProfileSettingsState extends State<UserProfileSettings> {
                       // SizedBox(height: 2.h),
                       // AppPreferencesWidget(),
                       SizedBox(height: 2.h),
-                      VerificationSectionWidget(userData: _userData),
+                      VerificationSectionWidget(
+                        userData: _userData,
+                        isGoogleUser: SupabaseService.isGoogleUser,
+                      ),
                       SizedBox(height: 2.h),
                       DataExportWidget(),
                       SizedBox(height: 3.h),
