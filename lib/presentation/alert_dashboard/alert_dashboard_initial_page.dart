@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
@@ -30,14 +31,13 @@ class _AlertDashboardInitialPageState
   int _safetyScore = 85;
 
   RealtimeChannel? _realtimeChannel;
+  final _dio = Dio();
 
   static const Map<String, String> _typeLabels = {
     'theft': 'Robo',
-    'assault': 'Agresión',
-    'suspicious_activity': 'Actividad Sospechosa',
+    'assault': 'Violencia',
+    'suspicious': 'Actividad Sospechosa',
     'emergency': 'Emergencia',
-    'accident': 'Accidente',
-    'fire': 'Incendio',
     'vandalism': 'Vandalismo',
     'other': 'Otro',
   };
@@ -45,10 +45,8 @@ class _AlertDashboardInitialPageState
   static const Map<String, String> _typeIcons = {
     'theft': 'local_police',
     'assault': 'warning',
-    'suspicious_activity': 'visibility',
+    'suspicious': 'visibility',
     'emergency': 'emergency',
-    'accident': 'car_crash',
-    'fire': 'local_fire_department',
     'vandalism': 'broken_image',
     'other': 'report_problem',
   };
@@ -63,7 +61,75 @@ class _AlertDashboardInitialPageState
   @override
   void dispose() {
     _realtimeChannel?.unsubscribe();
+    _dio.close();
     super.dispose();
+  }
+
+  bool _looksLikeCoordinates(String s) =>
+      RegExp(r'^-?\d+\.?\d*,\s*-?\d+\.?\d*$').hasMatch(s.trim());
+
+  Future<String?> _reverseGeocode(double lat, double lng) async {
+    const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+    if (apiKey.isNotEmpty) {
+      try {
+        final response = await _dio.get(
+          'https://maps.googleapis.com/maps/api/geocode/json',
+          queryParameters: {
+            'latlng': '$lat,$lng',
+            'key': apiKey,
+            'language': 'es',
+          },
+        );
+        final results = response.data['results'] as List?;
+        if (results != null && results.isNotEmpty) {
+          return results[0]['formatted_address'] as String?;
+        }
+      } catch (_) {}
+    }
+    try {
+      final response = await _dio.get(
+        'https://nominatim.openstreetmap.org/reverse',
+        queryParameters: {
+          'lat': '$lat',
+          'lon': '$lng',
+          'format': 'json',
+          'accept-language': 'es',
+        },
+        options: Options(headers: {'User-Agent': 'BatFinder/1.0'}),
+      );
+      final address = response.data['address'] as Map<String, dynamic>?;
+      if (address != null) {
+        final neighbourhood = address['neighbourhood'] as String?
+            ?? address['suburb'] as String?;
+        final city = address['city'] as String?
+            ?? address['town'] as String?
+            ?? address['village'] as String?;
+        final state = address['state'] as String?;
+        final parts = [neighbourhood, city, state]
+            .whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .toList();
+        if (parts.isNotEmpty) return parts.join(', ');
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _geocodeIncidents() async {
+    for (int i = 0; i < _incidents.length; i++) {
+      final location = _incidents[i]['location'] as String? ?? '';
+      if (!_looksLikeCoordinates(location)) continue;
+      final lat = (_incidents[i]['latitude'] as num?)?.toDouble();
+      final lng = (_incidents[i]['longitude'] as num?)?.toDouble();
+      if (lat == null || lng == null) continue;
+      final geocoded = await _reverseGeocode(lat, lng);
+      if (geocoded != null && mounted) {
+        setState(() {
+          _incidents[i] = Map<String, dynamic>.from(_incidents[i])
+            ..['location'] = geocoded;
+        });
+      }
+    }
   }
 
   Color _getSeverityColor(String severity) {
@@ -129,6 +195,7 @@ class _AlertDashboardInitialPageState
           _lastUpdated = DateTime.now();
           _isLoading = false;
         });
+        _geocodeIncidents();
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -319,7 +386,37 @@ class _AlertDashboardInitialPageState
                         score: _safetyScore,
                         location: _currentLocation,
                         stats: _stats,
-                        onTap: () => HapticFeedback.lightImpact(),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('¿Cómo se calcula la puntuación?'),
+                              content: const Text(
+                                'La puntuación de seguridad refleja el nivel de '
+                                'riesgo de tu área en tiempo real:\n\n'
+                                '🟢  70 – 100 → Zona segura\n'
+                                '🟡  40 – 69  → Riesgo moderado\n'
+                                '🔴  0 – 39   → Zona de alto riesgo\n\n'
+                                'Se calcula con base en el número de incidentes '
+                                'activos vs. resueltos reportados por la comunidad. '
+                                'Se actualiza automáticamente con cada nuevo reporte.',
+                              ),
+                              actions: [
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    right: 16,
+                                    bottom: 12,
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Entendido'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
 
                       SizedBox(height: 3.h),

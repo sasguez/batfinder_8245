@@ -3,7 +3,6 @@ import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
 
-/// Widget displaying reporter information with verification status
 class ReporterInfoWidget extends StatelessWidget {
   final Map<String, dynamic> reporterData;
 
@@ -12,9 +11,10 @@ class ReporterInfoWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bool isAnonymous = reporterData['isAnonymous'] ?? false;
-    final bool isVerified = reporterData['isVerified'] ?? false;
-    final int reputationScore = reporterData['reputationScore'] ?? 0;
+    final bool isAnonymous = reporterData['isAnonymous'] as bool? ?? false;
+    final bool isVerified = reporterData['isVerified'] as bool? ?? false;
+    final int reputationScore =
+        reporterData['reputationScore'] as int? ?? 0;
 
     if (isAnonymous) {
       return Container(
@@ -48,14 +48,14 @@ class ReporterInfoWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Anonymous Reporter',
+                    'Reportero Anónimo',
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   SizedBox(height: 0.5.h),
                   Text(
-                    'Identity protected for safety',
+                    'Identidad protegida por seguridad',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -81,13 +81,13 @@ class ReporterInfoWidget extends StatelessWidget {
           Stack(
             children: [
               CustomImageWidget(
-                imageUrl: reporterData['avatar'] ?? '',
+                imageUrl: reporterData['avatar'] as String? ?? '',
                 width: 12.w,
                 height: 12.w,
                 fit: BoxFit.cover,
                 semanticLabel:
-                    reporterData['avatarSemanticLabel'] ??
-                    'Reporter profile photo',
+                    reporterData['avatarSemanticLabel'] as String? ??
+                    'Foto de perfil del reportero',
               ),
               if (isVerified)
                 Positioned(
@@ -96,14 +96,14 @@ class ReporterInfoWidget extends StatelessWidget {
                   child: Container(
                     padding: EdgeInsets.all(0.5.w),
                     decoration: BoxDecoration(
-                      color: Color(0xFF2E7D32),
+                      color: const Color(0xFF2E7D32),
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: theme.colorScheme.surface,
                         width: 2,
                       ),
                     ),
-                    child: CustomIconWidget(
+                    child: const CustomIconWidget(
                       iconName: 'check',
                       color: Colors.white,
                       size: 12,
@@ -121,7 +121,7 @@ class ReporterInfoWidget extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        reporterData['name'] ?? 'Unknown',
+                        reporterData['name'] as String? ?? 'Desconocido',
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -131,7 +131,7 @@ class ReporterInfoWidget extends StatelessWidget {
                     ),
                     if (isVerified) ...[
                       SizedBox(width: 1.w),
-                      CustomIconWidget(
+                      const CustomIconWidget(
                         iconName: 'verified',
                         color: Color(0xFF2E7D32),
                         size: 16,
@@ -142,14 +142,14 @@ class ReporterInfoWidget extends StatelessWidget {
                 SizedBox(height: 0.5.h),
                 Row(
                   children: [
-                    CustomIconWidget(
+                    const CustomIconWidget(
                       iconName: 'star',
                       color: Color(0xFFFFD700),
                       size: 14,
                     ),
                     SizedBox(width: 1.w),
                     Text(
-                      'Reputation: $reputationScore',
+                      'Reputación: $reputationScore',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

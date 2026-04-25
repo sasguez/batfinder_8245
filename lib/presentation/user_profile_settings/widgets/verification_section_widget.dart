@@ -1,19 +1,71 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../services/supabase_service.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
 /// Verification Section Widget
-/// Account verification status and re-verification options
-class VerificationSectionWidget extends StatelessWidget {
+/// Muestra el estado de verificación de la cuenta y permite al usuario
+/// verificar su correo electrónico. Para usuarios de Google el email
+/// se considera verificado automáticamente.
+class VerificationSectionWidget extends StatefulWidget {
   final Map<String, dynamic> userData;
+  final bool isGoogleUser;
 
-  const VerificationSectionWidget({super.key, required this.userData});
+  const VerificationSectionWidget({
+    super.key,
+    required this.userData,
+    required this.isGoogleUser,
+  });
+
+  @override
+  State<VerificationSectionWidget> createState() =>
+      _VerificationSectionWidgetState();
+}
+
+class _VerificationSectionWidgetState
+    extends State<VerificationSectionWidget> {
+  bool _sendingEmail = false;
+
+  Future<void> _sendEmailVerification() async {
+    if (_sendingEmail) return;
+    setState(() => _sendingEmail = true);
+    try {
+      final email = widget.userData['email'] as String? ?? '';
+      await SupabaseService.resendVerificationEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Correo de verificación enviado. Revisa tu bandeja de entrada.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text(
+          'No se pudo enviar el correo. Verifica que "Confirm email" esté habilitado en Supabase.',
+        ),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
+      if (kDebugMode) print('❌ Resend verification error: $e');
+    } finally {
+      if (mounted) setState(() => _sendingEmail = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // Google: email siempre verificado, no mostrar teléfono
+    final emailVerified =
+        widget.isGoogleUser || (widget.userData['verifiedEmail'] as bool? ?? false);
+    final phoneVerified = widget.userData['verifiedPhone'] as bool? ?? false;
+    final docsVerified = widget.userData['verifiedDocuments'] as bool? ?? false;
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w),
@@ -25,7 +77,6 @@ class VerificationSectionWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section Header
           Padding(
             padding: EdgeInsets.all(4.w),
             child: Text(
@@ -35,56 +86,67 @@ class VerificationSectionWidget extends StatelessWidget {
               ),
             ),
           ),
+          const Divider(height: 1, thickness: 1),
 
-          Divider(height: 1, thickness: 1),
+          // Teléfono: solo visible para usuarios no-Google
+          if (!widget.isGoogleUser) ...[
+            _buildTile(
+              context: context,
+              icon: 'phone',
+              label: 'Teléfono',
+              isVerified: phoneVerified,
+              onTap: phoneVerified
+                  ? null
+                  : () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'La verificación por SMS requiere configuración de proveedor SMS en Supabase.',
+                          ),
+                        ),
+                      ),
+            ),
+            Divider(height: 1, thickness: 1, indent: 16.w),
+          ],
 
-          // Phone Verification
-          _buildVerificationTile(
-            context: context,
-            icon: 'phone',
-            label: 'Teléfono',
-            isVerified: userData["verifiedPhone"] as bool,
-            onTap: () {
-              // Re-verify phone
-            },
-          ),
-
-          Divider(height: 1, thickness: 1, indent: 16.w),
-
-          // Email Verification
-          _buildVerificationTile(
+          // Correo electrónico
+          _buildTile(
             context: context,
             icon: 'email',
             label: 'Correo Electrónico',
-            isVerified: userData["verifiedEmail"] as bool,
-            onTap: () {
-              // Re-verify email
-            },
+            isVerified: emailVerified,
+            loading: _sendingEmail,
+            onTap: emailVerified ? null : _sendEmailVerification,
           ),
-
           Divider(height: 1, thickness: 1, indent: 16.w),
 
-          // Document Verification
-          _buildVerificationTile(
+          // Documentos de identidad: siempre visible
+          _buildTile(
             context: context,
             icon: 'badge',
             label: 'Documentos de Identidad',
-            isVerified: userData["verifiedDocuments"] as bool,
-            onTap: () {
-              // Verify documents
-            },
+            isVerified: docsVerified,
+            onTap: docsVerified
+                ? null
+                : () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Contacta al equipo de BatFinder para verificar tu identidad.',
+                        ),
+                      ),
+                    ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildVerificationTile({
+  Widget _buildTile({
     required BuildContext context,
     required String icon,
     required String label,
     required bool isVerified,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
+    bool loading = false,
   }) {
     final theme = Theme.of(context);
 
@@ -127,9 +189,8 @@ class VerificationSectionWidget extends StatelessWidget {
                     children: [
                       CustomIconWidget(
                         iconName: isVerified ? 'check_circle' : 'cancel',
-                        color: isVerified
-                            ? Colors.green
-                            : theme.colorScheme.error,
+                        color:
+                            isVerified ? Colors.green : theme.colorScheme.error,
                         size: 16,
                       ),
                       SizedBox(width: 1.w),
@@ -147,29 +208,39 @@ class VerificationSectionWidget extends StatelessWidget {
                 ],
               ),
             ),
-            isVerified
-                ? CustomIconWidget(
-                    iconName: 'refresh',
-                    color: theme.colorScheme.onSurfaceVariant,
-                    size: 20,
-                  )
-                : Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 3.w,
-                      vertical: 0.5.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Verificar',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+            if (loading)
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: theme.colorScheme.primary,
+                ),
+              )
+            else if (isVerified)
+              CustomIconWidget(
+                iconName: 'verified',
+                color: Colors.green,
+                size: 22,
+              )
+            else if (onTap != null)
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 3.w,
+                  vertical: 0.5.h,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Verificar',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
+              ),
           ],
         ),
       ),

@@ -1,18 +1,116 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../services/supabase_service.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
-class AccountSectionWidget extends StatelessWidget {
+class AccountSectionWidget extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool isGoogleUser;
+  final VoidCallback onProfileUpdated;
 
   const AccountSectionWidget({
     super.key,
     required this.userData,
     required this.isGoogleUser,
+    required this.onProfileUpdated,
   });
+
+  @override
+  State<AccountSectionWidget> createState() => _AccountSectionWidgetState();
+}
+
+class _AccountSectionWidgetState extends State<AccountSectionWidget> {
+  Future<void> _editName() async {
+    final controller = TextEditingController(
+      text: widget.userData['name'] as String? ?? '',
+    );
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar Nombre'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(labelText: 'Nombre completo'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty || !mounted) return;
+    try {
+      await SupabaseService.updateUserProfile(
+        userId: SupabaseService.currentUserId!,
+        updates: {'full_name': newName},
+      );
+      widget.onProfileUpdated();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error al actualizar nombre'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
+      if (kDebugMode) print('❌ Edit name error: $e');
+    }
+  }
+
+  Future<void> _editPhone() async {
+    final controller = TextEditingController(
+      text: widget.userData['phone'] as String? ?? '',
+    );
+    final newPhone = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar Teléfono'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'Número de teléfono',
+            hintText: '+57 300 000 0000',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (newPhone == null || !mounted) return;
+    try {
+      await SupabaseService.updateUserProfile(
+        userId: SupabaseService.currentUserId!,
+        updates: {'phone': newPhone},
+      );
+      widget.onProfileUpdated();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error al actualizar teléfono'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
+      if (kDebugMode) print('❌ Edit phone error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,50 +135,42 @@ class AccountSectionWidget extends StatelessWidget {
               ),
             ),
           ),
-
           Divider(height: 1, thickness: 1),
-
           _buildInfoTile(
             context: context,
             icon: 'person',
             label: 'Nombre',
-            value: userData['name'] as String,
-            onTap: () {},
+            value: widget.userData['name'] as String? ?? '',
+            onTap: _editName,
           ),
-
           Divider(height: 1, thickness: 1, indent: 16.w),
-
           _buildInfoTile(
             context: context,
             icon: 'email',
             label: 'Correo Electrónico',
-            value: userData['email'] as String,
-            onTap: isGoogleUser ? null : () {},
-            disabled: isGoogleUser,
+            value: widget.userData['email'] as String? ?? '',
+            onTap: widget.isGoogleUser ? null : () {},
+            disabled: widget.isGoogleUser,
           ),
-
           Divider(height: 1, thickness: 1, indent: 16.w),
-
           _buildInfoTile(
             context: context,
             icon: 'phone',
             label: 'Teléfono',
-            value: userData['phone'] as String,
-            onTap: () {},
+            value: (widget.userData['phone'] as String?)?.isNotEmpty == true
+                ? widget.userData['phone'] as String
+                : 'Sin número',
+            onTap: _editPhone,
           ),
-
           Divider(height: 1, thickness: 1, indent: 16.w),
-
           _buildInfoTile(
             context: context,
             icon: 'lock',
             label: 'Contraseña',
             value: '••••••••',
-            onTap: isGoogleUser ? null : () {},
-            disabled: isGoogleUser,
-            disabledHint: isGoogleUser
-                ? 'Gestionada por Google'
-                : null,
+            onTap: widget.isGoogleUser ? null : () {},
+            disabled: widget.isGoogleUser,
+            disabledHint: widget.isGoogleUser ? 'Gestionada por Google' : null,
           ),
         ],
       ),
@@ -142,9 +232,8 @@ class AccountSectionWidget extends StatelessWidget {
                     value,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: disabled
-                          ? theme.colorScheme.onSurfaceVariant
-                          : null,
+                      color:
+                          disabled ? theme.colorScheme.onSurfaceVariant : null,
                     ),
                   ),
                   if (disabledHint != null) ...[
@@ -187,9 +276,7 @@ class AccountSectionWidget extends StatelessWidget {
       ),
     );
 
-    if (disabled) {
-      return Opacity(opacity: 0.55, child: tile);
-    }
+    if (disabled) return Opacity(opacity: 0.55, child: tile);
     return tile;
   }
 }

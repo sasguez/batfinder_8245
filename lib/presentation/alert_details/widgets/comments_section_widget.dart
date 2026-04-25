@@ -3,7 +3,6 @@ import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
 
-/// Widget displaying comments section with community discussion
 class CommentsSectionWidget extends StatefulWidget {
   final List<Map<String, dynamic>> comments;
 
@@ -33,7 +32,7 @@ class _CommentsSectionWidgetState extends State<CommentsSectionWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Community Discussion (${widget.comments.length})',
+            'Comentarios de la Comunidad (${widget.comments.length})',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -53,7 +52,7 @@ class _CommentsSectionWidgetState extends State<CommentsSectionWidget> {
                   maxLines: 3,
                   decoration: InputDecoration(
                     hintText:
-                        'Share your thoughts or additional information...',
+                        'Comparte información adicional sobre este incidente...',
                     border: InputBorder.none,
                     hintStyle: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -75,21 +74,21 @@ class _CommentsSectionWidgetState extends State<CommentsSectionWidget> {
                             },
                           ),
                           Text(
-                            'Post anonymously',
+                            'Publicar anónimamente',
                             style: theme.textTheme.bodySmall,
                           ),
                         ],
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: () => _postComment(),
+                      onPressed: _postComment,
                       style: ElevatedButton.styleFrom(
                         padding: EdgeInsets.symmetric(
                           horizontal: 4.w,
                           vertical: 1.h,
                         ),
                       ),
-                      child: Text('Post'),
+                      child: const Text('Publicar'),
                     ),
                   ],
                 ),
@@ -99,7 +98,7 @@ class _CommentsSectionWidgetState extends State<CommentsSectionWidget> {
           SizedBox(height: 2.h),
           ListView.separated(
             shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: widget.comments.length,
             separatorBuilder: (context, index) => SizedBox(height: 2.h),
             itemBuilder: (context, index) {
@@ -117,12 +116,13 @@ class _CommentsSectionWidgetState extends State<CommentsSectionWidget> {
     Map<String, dynamic> comment,
     ThemeData theme,
   ) {
-    final bool isAnonymous = comment['isAnonymous'] ?? false;
+    final bool isAnonymous = comment['isAnonymous'] as bool? ?? false;
     final String authorName = isAnonymous
-        ? 'Anonymous User'
-        : (comment['authorName'] ?? 'Unknown');
-    final String content = comment['content'] ?? '';
-    final DateTime timestamp = comment['timestamp'] ?? DateTime.now();
+        ? 'Usuario Anónimo'
+        : (comment['authorName'] as String? ?? 'Desconocido');
+    final String content = comment['content'] as String? ?? '';
+    final DateTime timestamp =
+        comment['timestamp'] as DateTime? ?? DateTime.now();
 
     return Container(
       padding: EdgeInsets.all(3.w),
@@ -153,13 +153,13 @@ class _CommentsSectionWidgetState extends State<CommentsSectionWidget> {
                           size: 16,
                         )
                       : CustomImageWidget(
-                          imageUrl: comment['authorAvatar'] ?? '',
+                          imageUrl: comment['authorAvatar'] as String? ?? '',
                           width: 8.w,
                           height: 8.w,
                           fit: BoxFit.cover,
                           semanticLabel:
-                              comment['authorAvatarSemanticLabel'] ??
-                              'Commenter profile photo',
+                              comment['authorAvatarSemanticLabel'] as String? ??
+                              'Foto de perfil',
                         ),
                 ),
               ),
@@ -193,33 +193,23 @@ class _CommentsSectionWidgetState extends State<CommentsSectionWidget> {
   }
 
   void _postComment() {
-    if (_commentController.text.trim().isEmpty) {
-      return;
-    }
+    if (_commentController.text.trim().isEmpty) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Comment posted successfully'),
+      const SnackBar(
+        content: Text('Comentario publicado exitosamente'),
         duration: Duration(seconds: 2),
       ),
     );
 
     _commentController.clear();
-    setState(() {
-      _postAnonymously = false;
-    });
+    setState(() => _postAnonymously = false);
   }
 
   String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
+    final diff = DateTime.now().difference(timestamp);
+    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'hace ${diff.inHours}h';
+    return 'hace ${diff.inDays}d';
   }
 }

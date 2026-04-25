@@ -7,7 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/app_export.dart';
 import '../../services/supabase_service.dart';
+import '../../widgets/custom_bottom_bar.dart';
 import '../../widgets/custom_icon_widget.dart';
+import '../alert_dashboard/alert_dashboard.dart';
 import './widgets/incident_filter_sheet_widget.dart';
 import './widgets/incident_marker_preview_widget.dart';
 import './widgets/map_controls_widget.dart';
@@ -405,17 +407,22 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
           child: Stack(
             children: [
               _isLoadingLocation
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const CircularProgressIndicator(),
-                          SizedBox(height: 2.h),
-                          Text(
-                            'Obteniendo ubicación...',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ],
+                  ? Container(
+                      color: theme.colorScheme.surface,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              color: theme.colorScheme.primary,
+                            ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              'Obteniendo ubicación...',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : GoogleMap(
@@ -468,19 +475,12 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
                 minChildSize: 0.15,
                 maxChildSize: 0.8,
                 builder: (context, scrollController) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, -2),
-                        ),
-                      ],
+                  return Material(
+                    color: theme.colorScheme.surface,
+                    elevation: 8,
+                    shadowColor: Colors.black.withValues(alpha: 0.1),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
                     ),
                     child: Column(
                       children: [
@@ -518,6 +518,14 @@ class _InteractiveSafetyMapState extends State<InteractiveSafetyMap> {
               ),
             ],
           ),
+        ),
+        CustomBottomBar(
+          currentIndex: 1,
+          onTap: (index) {
+            context
+                .findAncestorStateOfType<AlertDashboardState>()
+                ?.switchTab(index);
+          },
         ),
       ],
     );

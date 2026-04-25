@@ -4,7 +4,6 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
-/// Widget for community verification with voting system
 class VerificationSectionWidget extends StatefulWidget {
   final int initialConfirms;
   final int initialDisputes;
@@ -36,9 +35,8 @@ class _VerificationSectionWidgetState extends State<VerificationSectionWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final int totalVotes = _confirms + _disputes;
-    final double confirmPercentage = totalVotes > 0
-        ? (_confirms / totalVotes) * 100
-        : 0;
+    final double confirmPercentage =
+        totalVotes > 0 ? (_confirms / totalVotes) * 100 : 0;
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
@@ -52,7 +50,7 @@ class _VerificationSectionWidgetState extends State<VerificationSectionWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Community Verification',
+            'Verificación Comunitaria',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -66,12 +64,12 @@ class _VerificationSectionWidgetState extends State<VerificationSectionWidget> {
                     Text(
                       '${confirmPercentage.toStringAsFixed(0)}%',
                       style: theme.textTheme.headlineSmall?.copyWith(
-                        color: Color(0xFF2E7D32),
+                        color: const Color(0xFF2E7D32),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
-                      'Confirmed',
+                      'Confirmado',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -94,7 +92,7 @@ class _VerificationSectionWidgetState extends State<VerificationSectionWidget> {
                       ),
                     ),
                     Text(
-                      'Total Votes',
+                      'Votos Totales',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -119,10 +117,10 @@ class _VerificationSectionWidgetState extends State<VerificationSectionWidget> {
                         : theme.colorScheme.onPrimary,
                     size: 18,
                   ),
-                  label: Text('Confirm ($_confirms)'),
+                  label: Text('Confirmar ($_confirms)'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _userVote == 'confirm'
-                        ? Color(0xFF2E7D32)
+                        ? const Color(0xFF2E7D32)
                         : theme.colorScheme.primary,
                     padding: EdgeInsets.symmetric(vertical: 1.5.h),
                   ),
@@ -141,7 +139,7 @@ class _VerificationSectionWidgetState extends State<VerificationSectionWidget> {
                         : theme.colorScheme.primary,
                     size: 18,
                   ),
-                  label: Text('Dispute ($_disputes)'),
+                  label: Text('Disputar ($_disputes)'),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
                       color: _userVote == 'dispute'
@@ -169,13 +167,11 @@ class _VerificationSectionWidgetState extends State<VerificationSectionWidget> {
           _disputes--;
         }
       }
-
       if (voteType == 'confirm') {
         _confirms++;
       } else {
         _disputes++;
       }
-
       _userVote = voteType;
     });
   }

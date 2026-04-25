@@ -20,25 +20,29 @@ class EmergencyServicesWidget extends StatelessWidget {
         'name': 'Emergencia General',
         'number': '123',
         'icon': 'emergency',
-        'color': theme.colorScheme.error,
+        'colorA': const Color(0xFFEF4444),
+        'colorB': const Color(0xFFB91C1C),
       },
       {
         'name': 'Policía',
         'number': '112',
         'icon': 'local_police',
-        'color': Color(0xFF1B365D),
+        'colorA': const Color(0xFF1E40AF),
+        'colorB': const Color(0xFF1B365D),
       },
       {
         'name': 'Médica',
         'number': '125',
         'icon': 'local_hospital',
-        'color': Colors.green,
+        'colorA': const Color(0xFF16A34A),
+        'colorB': const Color(0xFF166534),
       },
       {
         'name': 'Bomberos',
         'number': '119',
         'icon': 'local_fire_department',
-        'color': Colors.orange,
+        'colorA': const Color(0xFFF97316),
+        'colorB': const Color(0xFFC2410C),
       },
     ];
 
@@ -47,10 +51,9 @@ class EmergencyServicesWidget extends StatelessWidget {
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.3),
-          width: 1,
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -62,7 +65,7 @@ class EmergencyServicesWidget extends StatelessWidget {
                 padding: EdgeInsets.all(2.w),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: CustomIconWidget(
                   iconName: 'phone_in_talk',
@@ -78,96 +81,123 @@ class EmergencyServicesWidget extends StatelessWidget {
                     Text(
                       'Servicios de Emergencia',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: 0.5.h),
                     Text(
                       'Llamada directa a autoridades',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          SizedBox(height: 2.h),
+          SizedBox(height: 2.5.h),
           GridView.builder(
             shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
+            physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 2.w,
-              mainAxisSpacing: 1.h,
-              childAspectRatio: 1.5,
+              crossAxisSpacing: 3.w,
+              mainAxisSpacing: 2.h,
+              childAspectRatio: 1.4,
             ),
             itemCount: services.length,
-            itemBuilder: (context, index) {
-              final service = services[index];
-              return _buildServiceButton(context, service, theme);
-            },
+            itemBuilder: (context, index) =>
+                _ServiceButton(service: services[index], onCall: onCallService),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildServiceButton(
-    BuildContext context,
-    Map<String, dynamic> service,
-    ThemeData theme,
-  ) {
-    return ElevatedButton(
-      onPressed: () {
-        HapticFeedback.heavyImpact();
-        onCallService(service['name'] as String, service['number'] as String);
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: (service['color'] as Color).withValues(alpha: 0.1),
-        foregroundColor: service['color'] as Color,
-        padding: EdgeInsets.all(3.w),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: (service['color'] as Color).withValues(alpha: 0.3),
-            width: 1,
+class _ServiceButton extends StatelessWidget {
+  final Map<String, dynamic> service;
+  final Function(String, String) onCall;
+
+  const _ServiceButton({required this.service, required this.onCall});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorA = service['colorA'] as Color;
+    final colorB = service['colorB'] as Color;
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.heavyImpact();
+          onCall(service['name'] as String, service['number'] as String);
+        },
+        borderRadius: BorderRadius.circular(16),
+        splashColor: Colors.white.withValues(alpha: 0.2),
+        highlightColor: Colors.white.withValues(alpha: 0.1),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [colorA, colorB],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: colorA.withValues(alpha: 0.4),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.5.h),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CustomIconWidget(
+                  iconName: service['icon'] as String,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                SizedBox(height: 0.8.h),
+                Text(
+                  service['name'] as String,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 0.5.h),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 2.5.w,
+                    vertical: 0.3.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    service['number'] as String,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CustomIconWidget(
-            iconName: service['icon'] as String,
-            color: service['color'] as Color,
-            size: 32,
-          ),
-          SizedBox(height: 1.h),
-          Text(
-            service['name'] as String,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: service['color'] as Color,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: 0.5.h),
-          Text(
-            service['number'] as String,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: (service['color'] as Color).withValues(alpha: 0.7),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }

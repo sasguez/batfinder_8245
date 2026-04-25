@@ -5,7 +5,6 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
-/// Widget displaying action buttons for alert interaction
 class ActionButtonsWidget extends StatelessWidget {
   final Map<String, dynamic> alertData;
   final bool isAuthority;
@@ -31,7 +30,7 @@ class ActionButtonsWidget extends StatelessWidget {
               color: theme.colorScheme.onPrimary,
               size: 20,
             ),
-            label: Text('Get Directions to Avoid Area'),
+            label: const Text('Obtener Ruta para Evitar la Zona'),
             style: ElevatedButton.styleFrom(
               minimumSize: Size(double.infinity, 6.h),
               padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -48,7 +47,7 @@ class ActionButtonsWidget extends StatelessWidget {
                     color: theme.colorScheme.primary,
                     size: 18,
                   ),
-                  label: Text('Share'),
+                  label: const Text('Compartir'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: Size(double.infinity, 6.h),
                   ),
@@ -63,7 +62,7 @@ class ActionButtonsWidget extends StatelessWidget {
                     color: theme.colorScheme.primary,
                     size: 18,
                   ),
-                  label: Text('Add Update'),
+                  label: const Text('Comentar'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: Size(double.infinity, 6.h),
                   ),
@@ -80,9 +79,9 @@ class ActionButtonsWidget extends StatelessWidget {
                 color: theme.colorScheme.onPrimary,
                 size: 20,
               ),
-              label: Text('Mark as Resolved'),
+              label: const Text('Marcar como Resuelto'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF2E7D32),
+                backgroundColor: const Color(0xFF2E7D32),
                 minimumSize: Size(double.infinity, 6.h),
               ),
             ),
@@ -94,19 +93,35 @@ class ActionButtonsWidget extends StatelessWidget {
 
   void _getDirections(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening safe route navigation...'),
+      const SnackBar(
+        content: Text('Navegación de ruta segura disponible próximamente'),
         duration: Duration(seconds: 2),
       ),
     );
   }
 
+  String _severityLabel(String severity) {
+    switch (severity) {
+      case 'critical': return 'CRÍTICO 🔴';
+      case 'high':     return 'ALTO 🟠';
+      case 'medium':   return 'MEDIO 🟡';
+      default:         return 'BAJO 🟢';
+    }
+  }
+
   void _shareAlert(BuildContext context) {
-    final String location = alertData['location'] ?? 'Unknown Location';
-    final String type = alertData['type'] ?? 'Unknown';
-    Share.share(
-      'Security Alert: $type reported at $location. Stay safe! - BatFinder',
-      subject: 'Security Alert from BatFinder',
+    final type = alertData['type'] as String? ?? 'Incidente';
+    final severity = alertData['severity'] as String? ?? 'medium';
+    final location = alertData['location'] as String? ?? 'ubicación desconocida';
+    SharePlus.instance.share(
+      ShareParams(
+        text: '🦇 BatFinder — Alerta de Seguridad\n\n'
+            '🚨 Tipo: $type\n'
+            '⚡ Nivel: ${_severityLabel(severity)}\n'
+            '📍 Ubicación: $location\n\n'
+            '⚠️ Comparte esta alerta para mantener a tu comunidad informada y segura.',
+        subject: 'Alerta de Seguridad — BatFinder',
+      ),
     );
   }
 
@@ -114,7 +129,7 @@ class ActionButtonsWidget extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) => Padding(
@@ -127,13 +142,15 @@ class ActionButtonsWidget extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Add Update', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Agregar Comentario',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               SizedBox(height: 2.h),
               TextField(
                 maxLines: 4,
-                decoration: InputDecoration(
-                  hintText:
-                      'Share additional information about this incident...',
+                decoration: const InputDecoration(
+                  hintText: 'Comparte información adicional sobre este incidente...',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -143,7 +160,7 @@ class ActionButtonsWidget extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text('Cancel'),
+                      child: const Text('Cancelar'),
                     ),
                   ),
                   SizedBox(width: 2.w),
@@ -152,10 +169,12 @@ class ActionButtonsWidget extends StatelessWidget {
                       onPressed: () {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Update posted successfully')),
+                          const SnackBar(
+                            content: Text('Comentario publicado exitosamente'),
+                          ),
                         );
                       },
-                      child: Text('Post Update'),
+                      child: const Text('Publicar'),
                     ),
                   ),
                 ],
@@ -171,23 +190,25 @@ class ActionButtonsWidget extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Mark as Resolved'),
-        content: Text(
-          'Are you sure you want to mark this incident as resolved?',
+        title: const Text('Marcar como Resuelto'),
+        content: const Text(
+          '¿Estás seguro de que deseas marcar este incidente como resuelto?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Incident marked as resolved')),
+                const SnackBar(
+                  content: Text('Incidente marcado como resuelto'),
+                ),
               );
             },
-            child: Text('Confirm'),
+            child: const Text('Confirmar'),
           ),
         ],
       ),

@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
-/// Widget for displaying and adjusting incident location
 class LocationSelectorWidget extends StatelessWidget {
   final String locationText;
   final VoidCallback onAdjustLocation;
   final bool isLoadingLocation;
+  final double? latitude;
+  final double? longitude;
 
   const LocationSelectorWidget({
     super.key,
     required this.locationText,
     required this.onAdjustLocation,
     this.isLoadingLocation = false,
+    this.latitude,
+    this.longitude,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasCoords = latitude != null && longitude != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,15 +88,38 @@ class LocationSelectorWidget extends StatelessWidget {
                   color: theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(8),
                 ),
+                clipBehavior: Clip.hardEdge,
                 child: Stack(
                   children: [
-                    Center(
-                      child: CustomIconWidget(
-                        iconName: 'map',
-                        color: theme.colorScheme.onSurfaceVariant,
-                        size: 48,
+                    if (hasCoords)
+                      GoogleMap(
+                        key: ValueKey('$latitude:$longitude'),
+                        initialCameraPosition: CameraPosition(
+                          target: LatLng(latitude!, longitude!),
+                          zoom: 15.0,
+                        ),
+                        markers: {
+                          Marker(
+                            markerId: const MarkerId('incident'),
+                            position: LatLng(latitude!, longitude!),
+                          ),
+                        },
+                        myLocationEnabled: false,
+                        myLocationButtonEnabled: false,
+                        zoomControlsEnabled: false,
+                        scrollGesturesEnabled: false,
+                        zoomGesturesEnabled: false,
+                        rotateGesturesEnabled: false,
+                        tiltGesturesEnabled: false,
+                      )
+                    else
+                      Center(
+                        child: CustomIconWidget(
+                          iconName: 'map',
+                          color: theme.colorScheme.onSurfaceVariant,
+                          size: 48,
+                        ),
                       ),
-                    ),
                     Positioned(
                       bottom: 2.w,
                       right: 2.w,
@@ -102,7 +130,7 @@ class LocationSelectorWidget extends StatelessWidget {
                           color: theme.colorScheme.onPrimary,
                           size: 18,
                         ),
-                        label: Text('Ajustar'),
+                        label: const Text('Ajustar'),
                         style: ElevatedButton.styleFrom(
                           padding: EdgeInsets.symmetric(
                             horizontal: 3.w,

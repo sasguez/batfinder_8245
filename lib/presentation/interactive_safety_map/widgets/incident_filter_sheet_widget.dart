@@ -139,42 +139,62 @@ class _IncidentFilterSheetWidgetState extends State<IncidentFilterSheetWidget> {
         SizedBox(height: 3.h),
         Text('Nivel de Severidad', style: theme.textTheme.titleMedium),
         SizedBox(height: 1.h),
-        Wrap(
-          spacing: 2.w,
-          runSpacing: 1.h,
-          children: _severityLevels.map((severity) {
+        Row(
+          children: _severityLevels.asMap().entries.map((entry) {
+            final i = entry.key;
+            final severity = entry.value;
             final isSelected = _selectedSeverities.contains(severity["value"]);
-            return FilterChip(
-              label: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: severity["color"] as Color,
-                      shape: BoxShape.circle,
+            final color = severity["color"] as Color;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedSeverities.remove(severity["value"] as String);
+                    } else {
+                      _selectedSeverities.add(severity["value"] as String);
+                    }
+                  });
+                  _applyFilters();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  margin: EdgeInsets.only(right: i < 3 ? 2.w : 0),
+                  padding: EdgeInsets.symmetric(vertical: 1.2.h),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? color.withValues(alpha: 0.12)
+                        : theme.colorScheme.surface,
+                    border: Border.all(
+                      color: isSelected ? color : theme.colorScheme.outline,
+                      width: isSelected ? 2 : 1,
                     ),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  SizedBox(width: 1.w),
-                  Text(severity["label"] as String),
-                ],
-              ),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  selected
-                      ? _selectedSeverities.add(severity["value"] as String)
-                      : _selectedSeverities.remove(severity["value"]);
-                });
-                _applyFilters();
-              },
-              selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
-              labelStyle: TextStyle(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      SizedBox(height: 0.5.h),
+                      Text(
+                        severity["label"] as String,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isSelected ? color : theme.colorScheme.onSurface,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
           }).toList(),

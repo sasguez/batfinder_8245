@@ -4,7 +4,6 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
-/// Widget displaying incident type badge, timestamp, and location information
 class IncidentHeaderWidget extends StatelessWidget {
   final Map<String, dynamic> alertData;
 
@@ -13,10 +12,13 @@ class IncidentHeaderWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final String incidentType = alertData['type'] ?? 'Unknown';
-    final DateTime timestamp = alertData['timestamp'] ?? DateTime.now();
-    final String location = alertData['location'] ?? 'Unknown Location';
-    final double distance = alertData['distance'] ?? 0.0;
+    final String incidentType = alertData['type'] as String? ?? 'Incidente';
+    final DateTime timestamp =
+        alertData['timestamp'] as DateTime? ?? DateTime.now();
+    final String location =
+        alertData['location'] as String? ?? 'Ubicación no disponible';
+    final String severity =
+        alertData['severity'] as String? ?? 'medium';
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
@@ -39,7 +41,22 @@ class IncidentHeaderWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              Spacer(),
+              const Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
+                decoration: BoxDecoration(
+                  color: _getSeverityColor(severity, theme).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  _severityLabel(severity),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: _getSeverityColor(severity, theme),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              SizedBox(width: 2.w),
               CustomIconWidget(
                 iconName: 'access_time',
                 color: theme.colorScheme.onSurfaceVariant,
@@ -64,25 +81,13 @@ class IncidentHeaderWidget extends StatelessWidget {
               ),
               SizedBox(width: 2.w),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      location,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 0.5.h),
-                    Text(
-                      '${distance.toStringAsFixed(1)} km from your location',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  location,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -94,29 +99,35 @@ class IncidentHeaderWidget extends StatelessWidget {
 
   Color _getIncidentColor(String type, ThemeData theme) {
     switch (type.toLowerCase()) {
-      case 'theft':
-        return theme.colorScheme.error;
-      case 'violence':
-        return theme.colorScheme.primary;
-      case 'suspicious activity':
-        return Color(0xFFF57C00);
-      case 'emergency':
-        return theme.colorScheme.error;
-      default:
-        return theme.colorScheme.secondary;
+      case 'robo':        return theme.colorScheme.error;
+      case 'violencia':   return theme.colorScheme.primary;
+      case 'emergencia':  return theme.colorScheme.error;
+      default:            return theme.colorScheme.secondary;
+    }
+  }
+
+  Color _getSeverityColor(String severity, ThemeData theme) {
+    switch (severity) {
+      case 'critical': return const Color(0xFFB71C1C);
+      case 'high':     return const Color(0xFFD32F2F);
+      case 'medium':   return const Color(0xFFF57C00);
+      default:         return const Color(0xFF2E7D32);
+    }
+  }
+
+  String _severityLabel(String severity) {
+    switch (severity) {
+      case 'critical': return 'CRÍTICO';
+      case 'high':     return 'ALTO';
+      case 'medium':   return 'MEDIO';
+      default:         return 'BAJO';
     }
   }
 
   String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
+    final diff = DateTime.now().difference(timestamp);
+    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'hace ${diff.inHours}h';
+    return 'hace ${diff.inDays}d';
   }
 }
