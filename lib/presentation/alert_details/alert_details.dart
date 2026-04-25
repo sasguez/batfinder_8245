@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
@@ -34,11 +36,9 @@ class _AlertDetailsState extends State<AlertDetails> {
 
   static const Map<String, String> _typeLabels = {
     'theft': 'Robo',
-    'assault': 'Agresión',
-    'suspicious_activity': 'Actividad Sospechosa',
+    'assault': 'Violencia',
+    'suspicious': 'Actividad Sospechosa',
     'emergency': 'Emergencia',
-    'accident': 'Accidente',
-    'fire': 'Incendio',
     'vandalism': 'Vandalismo',
     'other': 'Otro',
   };
@@ -68,6 +68,84 @@ class _AlertDetailsState extends State<AlertDetails> {
     }
   }
 
+  String _severityLabel(String severity) {
+    switch (severity) {
+      case 'critical': return 'CRÍTICO 🔴';
+      case 'high':     return 'ALTO 🟠';
+      case 'medium':   return 'MEDIO 🟡';
+      default:         return 'BAJO 🟢';
+    }
+  }
+
+  void _shareAlert() {
+    final type = _alertData['type'] as String? ?? 'Incidente';
+    final severity = _alertData['severity'] as String? ?? 'medium';
+    final location = _alertData['location'] as String? ?? 'ubicación desconocida';
+    SharePlus.instance.share(
+      ShareParams(
+        text: '🦇 BatFinder — Alerta de Seguridad\n\n'
+            '🚨 Tipo: $type\n'
+            '⚡ Nivel: ${_severityLabel(severity)}\n'
+            '📍 Ubicación: $location\n\n'
+            '⚠️ Comparte esta alerta para mantener a tu comunidad informada y segura.',
+        subject: 'Alerta de Seguridad — BatFinder',
+      ),
+    );
+  }
+
+  bool _looksLikeCoordinates(String s) =>
+      RegExp(r'^-?\d+\.?\d*,\s*-?\d+\.?\d*$').hasMatch(s.trim());
+
+  Future<String?> _reverseGeocode(double lat, double lng) async {
+    final dio = Dio();
+    // Intento 1: Google Maps Geocoding (requiere API key)
+    const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+    if (apiKey.isNotEmpty) {
+      try {
+        final response = await dio.get(
+          'https://maps.googleapis.com/maps/api/geocode/json',
+          queryParameters: {
+            'latlng': '$lat,$lng',
+            'key': apiKey,
+            'language': 'es',
+          },
+        );
+        final results = response.data['results'] as List?;
+        if (results != null && results.isNotEmpty) {
+          return results[0]['formatted_address'] as String?;
+        }
+      } catch (_) {}
+    }
+    // Intento 2: Nominatim (OpenStreetMap) — sin API key
+    try {
+      final response = await dio.get(
+        'https://nominatim.openstreetmap.org/reverse',
+        queryParameters: {
+          'lat': '$lat',
+          'lon': '$lng',
+          'format': 'json',
+          'accept-language': 'es',
+        },
+        options: Options(headers: {'User-Agent': 'BatFinder/1.0'}),
+      );
+      final address = response.data['address'] as Map<String, dynamic>?;
+      if (address != null) {
+        final neighbourhood = address['neighbourhood'] as String?
+            ?? address['suburb'] as String?;
+        final city = address['city'] as String?
+            ?? address['town'] as String?
+            ?? address['village'] as String?;
+        final state = address['state'] as String?;
+        final parts = [neighbourhood, city, state]
+            .whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .toList();
+        if (parts.isNotEmpty) return parts.join(', ');
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<void> _loadIncident(String id) async {
     try {
       final data = await SupabaseService.getIncidentDetails(id);
@@ -83,6 +161,18 @@ class _AlertDetailsState extends State<AlertDetails> {
 
       final incidentType = data['incident_type'] as String? ?? 'other';
       final createdAt = data['created_at'] as String?;
+      final lat = (data['latitude'] as num?)?.toDouble() ?? 4.7110;
+      final lng = (data['longitude'] as num?)?.toDouble() ?? -74.0721;
+
+      var locationAddress = data['location_address'] as String? ?? '';
+      if (locationAddress.isEmpty || _looksLikeCoordinates(locationAddress)) {
+        final geocoded = await _reverseGeocode(lat, lng);
+        if (geocoded != null) locationAddress = geocoded;
+      }
+      if (locationAddress.isEmpty || _looksLikeCoordinates(locationAddress)) {
+        locationAddress =
+            'Lat ${lat.toStringAsFixed(5)}, Lng ${lng.toStringAsFixed(5)}';
+      }
 
       setState(() {
         _alertData = {
@@ -90,10 +180,10 @@ class _AlertDetailsState extends State<AlertDetails> {
           'type': _typeLabels[incidentType] ?? 'Incidente',
           'timestamp':
               createdAt != null ? DateTime.parse(createdAt) : DateTime.now(),
-          'location': data['location_address'] ?? 'Ubicación no especificada',
+          'location': locationAddress,
           'distance': 'N/A',
-          'latitude': (data['latitude'] as num?)?.toDouble() ?? 4.7110,
-          'longitude': (data['longitude'] as num?)?.toDouble() ?? -74.0721,
+          'latitude': lat,
+          'longitude': lng,
           'description': data['description'] ?? '',
           'incident_type': incidentType,
           'severity': data['severity'] ?? 'medium',
@@ -203,11 +293,7 @@ class _AlertDetailsState extends State<AlertDetails> {
               color: theme.colorScheme.onSurface,
               size: 24,
             ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Compartir disponible próximamente')),
-              );
-            },
+            onPressed: _alertData.isEmpty ? null : _shareAlert,
             tooltip: 'Compartir',
           ),
         ],

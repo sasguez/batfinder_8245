@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -18,16 +19,44 @@ class AlertCardWidget extends StatelessWidget {
   });
 
   String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
+    final diff = DateTime.now().difference(timestamp);
+    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'hace ${diff.inHours}h';
+    return 'hace ${diff.inDays}d';
+  }
 
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
+  String _severityLabel(String severity) {
+    switch (severity) {
+      case 'critical': return 'CRÍTICO';
+      case 'high':     return 'ALTO';
+      case 'medium':   return 'MEDIO';
+      default:         return 'BAJO';
     }
+  }
+
+  String _severityLabelWithEmoji(String severity) {
+    switch (severity) {
+      case 'critical': return 'CRÍTICO 🔴';
+      case 'high':     return 'ALTO 🟠';
+      case 'medium':   return 'MEDIO 🟡';
+      default:         return 'BAJO 🟢';
+    }
+  }
+
+  void _share() {
+    final type = alertData['type'] as String? ?? 'Incidente';
+    final severity = alertData['severity'] as String? ?? 'medium';
+    final location = alertData['location'] as String? ?? 'ubicación desconocida';
+    SharePlus.instance.share(
+      ShareParams(
+        text: '🦇 BatFinder — Alerta de Seguridad\n\n'
+            '🚨 Tipo: $type\n'
+            '⚡ Nivel: ${_severityLabelWithEmoji(severity)}\n'
+            '📍 Ubicación: $location\n\n'
+            '⚠️ Comparte esta alerta para mantener a tu comunidad informada y segura.',
+        subject: 'Alerta de Seguridad — BatFinder',
+      ),
+    );
   }
 
   @override
@@ -40,23 +69,28 @@ class AlertCardWidget extends StatelessWidget {
       child: Slidable(
         key: ValueKey(alertData["id"]),
         endActionPane: ActionPane(
-          motion: const ScrollMotion(),
+          motion: const BehindMotion(),
+          extentRatio: 0.46,
           children: [
             SlidableAction(
               onPressed: (context) => onTap(),
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: theme.colorScheme.onPrimary,
-              icon: Icons.info_outline,
-              label: 'Details',
-              borderRadius: BorderRadius.horizontal(left: Radius.circular(8)),
+              icon: Icons.open_in_new_rounded,
+              label: 'Detalles',
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(12),
+              ),
             ),
             SlidableAction(
-              onPressed: (context) => onShare(),
-              backgroundColor: theme.colorScheme.secondary,
-              foregroundColor: theme.colorScheme.onSecondary,
-              icon: Icons.share,
-              label: 'Share',
-              borderRadius: BorderRadius.horizontal(right: Radius.circular(8)),
+              onPressed: (context) => _share(),
+              backgroundColor: theme.colorScheme.tertiary,
+              foregroundColor: theme.colorScheme.onTertiary,
+              icon: Icons.share_rounded,
+              label: 'Compartir',
+              borderRadius: const BorderRadius.horizontal(
+                right: Radius.circular(12),
+              ),
             ),
           ],
         ),
@@ -194,7 +228,7 @@ class AlertCardWidget extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          (alertData["severity"] as String).toUpperCase(),
+                          _severityLabel(alertData["severity"] as String? ?? 'medium'),
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: alertData["severityColor"] as Color,
                             fontWeight: FontWeight.w700,

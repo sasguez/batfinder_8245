@@ -115,22 +115,49 @@ class _IncidentReportingState extends State<IncidentReporting> {
   }
 
   Future<String> _reverseGeocode(double lat, double lng) async {
+    // Intento 1: Google Maps Geocoding (requiere API key)
+    const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+    if (apiKey.isNotEmpty) {
+      try {
+        final response = await _dio.get(
+          'https://maps.googleapis.com/maps/api/geocode/json',
+          queryParameters: {
+            'latlng': '$lat,$lng',
+            'key': apiKey,
+            'language': 'es',
+          },
+        );
+        final results = response.data['results'] as List?;
+        if (results != null && results.isNotEmpty) {
+          return results[0]['formatted_address'] as String;
+        }
+      } catch (_) {}
+    }
+    // Intento 2: Nominatim (OpenStreetMap) — sin API key
     try {
-      const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
-      if (apiKey.isEmpty) {
-        return '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
-      }
       final response = await _dio.get(
-        'https://maps.googleapis.com/maps/api/geocode/json',
+        'https://nominatim.openstreetmap.org/reverse',
         queryParameters: {
-          'latlng': '$lat,$lng',
-          'key': apiKey,
-          'language': 'es',
+          'lat': '$lat',
+          'lon': '$lng',
+          'format': 'json',
+          'accept-language': 'es',
         },
+        options: Options(headers: {'User-Agent': 'BatFinder/1.0'}),
       );
-      final results = response.data['results'] as List?;
-      if (results != null && results.isNotEmpty) {
-        return results[0]['formatted_address'] as String;
+      final address = response.data['address'] as Map<String, dynamic>?;
+      if (address != null) {
+        final neighbourhood = address['neighbourhood'] as String?
+            ?? address['suburb'] as String?;
+        final city = address['city'] as String?
+            ?? address['town'] as String?
+            ?? address['village'] as String?;
+        final state = address['state'] as String?;
+        final parts = [neighbourhood, city, state]
+            .whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .toList();
+        if (parts.isNotEmpty) return parts.join(', ');
       }
     } catch (_) {}
     return '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
