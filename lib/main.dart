@@ -1,9 +1,17 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:sizer/sizer.dart';
 
 import '../core/app_export.dart';
+import './firebase_options.dart';
+import './routes/app_routes.dart';
 import './services/supabase_service.dart';
+
+// Clave global para navegación desde handlers FCM en background
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,12 +19,43 @@ void main() async {
   try {
     await SupabaseService.initialize();
   } catch (e) {
-    if (kDebugMode) {
-      print('❌ Error general: $e');
-    }
+    if (kDebugMode) print('❌ Supabase init error: $e');
   }
 
+  // Firebase es opcional — requiere: flutterfire configure
+  await _initFirebase();
+
   runApp(const MyApp());
+}
+
+Future<void> _initFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await FirebaseMessaging.instance.requestPermission();
+
+    FirebaseMessaging.onMessage.listen((message) {
+      if (message.data['type'] == 'PANIC_ALERT') {
+        Fluttertoast.showToast(
+          msg: '🚨 ${message.notification?.title ?? "Alerta de pánico recibida"}',
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.TOP,
+          backgroundColor: Colors.red.shade700,
+          textColor: Colors.white,
+        );
+      }
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      if (message.data['type'] == 'PANIC_ALERT') {
+        navigatorKey.currentState?.pushNamed(AppRoutes.interactiveSafetyMap);
+      }
+    });
+  } catch (e) {
+    // Falla silenciosamente hasta que se ejecute flutterfire configure
+    if (kDebugMode) print('⚠️ Firebase init skipped: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -31,6 +70,7 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.light,
+          navigatorKey: navigatorKey,
 
           // 🚨 CRITICAL: NEVER REMOVE OR MODIFY
           builder: (context, child) {

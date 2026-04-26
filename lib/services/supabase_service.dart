@@ -515,6 +515,70 @@ class SupabaseService {
     }
   }
 
+  // Esquema extendido: phone_wa, phone_sms, has_app, fcm_token, priority, whatsapp_optin
+  static Future<List<Map<String, dynamic>>> getEmergencyContactsFull() async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) return [];
+      return await client
+          .from('emergency_contacts')
+          .select()
+          .eq('user_id', userId)
+          .order('priority', ascending: true)
+          .order('created_at', ascending: true);
+    } catch (e) {
+      if (kDebugMode) print('❌ getEmergencyContactsFull error: $e');
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> addEmergencyContactFull({
+    required String name,
+    String? phoneWa,
+    String? phoneSms,
+    bool hasApp = false,
+    String? fcmToken,
+    int priority = 1,
+    bool whatsappOptin = false,
+  }) async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) throw Exception('User not authenticated');
+      return await client
+          .from('emergency_contacts')
+          .insert({
+            'user_id':        userId,
+            'name':           name,
+            'phone_wa':       phoneWa,
+            'phone_sms':      phoneSms,
+            'has_app':        hasApp,
+            'fcm_token':      fcmToken,
+            'priority':       priority,
+            'whatsapp_optin': whatsappOptin,
+          })
+          .select()
+          .single();
+    } catch (e) {
+      if (kDebugMode) print('❌ addEmergencyContactFull error: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> updateEmergencyContactFull({
+    required String contactId,
+    required Map<String, dynamic> updates,
+  }) async {
+    try {
+      await client
+          .from('emergency_contacts')
+          .update(updates)
+          .eq('id', contactId);
+    } catch (e) {
+      if (kDebugMode) print('❌ updateEmergencyContactFull error: $e');
+      rethrow;
+    }
+  }
+
   // =============================
   // EMERGENCY ALERTS (PANIC)
   // =============================
