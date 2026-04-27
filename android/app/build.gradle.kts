@@ -18,7 +18,7 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.batfinder"
+    namespace = "com.batfinder.android"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -32,7 +32,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.batfinder"
+        applicationId = "com.batfinder.android"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

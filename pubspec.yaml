@@ -1,7 +1,7 @@
 name: batfinder
 description: A Flutter project of alert security.
 publish_to: none
-version: 1.0.0+1
+version: 1.7.2+1
 
 environment:
   sdk: ^3.9.0

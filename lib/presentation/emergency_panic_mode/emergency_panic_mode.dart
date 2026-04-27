@@ -109,16 +109,20 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
     await _initializeCamera();
 
     await _loadEmergencyContacts();
-    // Crea panic_event en Supabase y dispara panic-orchestrator (FCM + WhatsApp)
-    await PanicAlertService().activatePanic(triggerSource: 'button');
-    if (mounted) {
-      setState(() {
-        _emergencyContacts =
-            _emergencyContacts.map((c) => {...c, 'notified': true}).toList();
-      });
+    try {
+      final eventId = await PanicAlertService().activatePanic(triggerSource: 'button');
+      if (kDebugMode) print('✅ EmergencyPanicMode: eventId=$eventId');
+      if (mounted) {
+        setState(() {
+          _emergencyContacts =
+              _emergencyContacts.map((c) => {...c, 'notified': true}).toList();
+        });
+      }
+      _showEmergencyToast('Modo de emergencia activado');
+    } catch (e) {
+      if (kDebugMode) print('❌ EmergencyPanicMode.activatePanic: $e');
+      _showEmergencyToast('Error: $e');
     }
-
-    _showEmergencyToast('Modo de emergencia activado');
   }
 
   Future<void> _loadEmergencyContacts() async {

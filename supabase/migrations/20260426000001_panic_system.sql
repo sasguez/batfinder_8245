@@ -74,3 +74,33 @@ CREATE TABLE IF NOT EXISTS public.notification_delivery_logs (
 -- ── Habilitar Realtime ────────────────────────────────────────────────
 ALTER TABLE public.panic_events    REPLICA IDENTITY FULL;
 ALTER TABLE public.panic_locations REPLICA IDENTITY FULL;
+
+-- ── RLS: panic_events ─────────────────────────────────────────────────
+ALTER TABLE public.panic_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "panic_events_insert" ON public.panic_events;
+CREATE POLICY "panic_events_insert" ON public.panic_events
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "panic_events_select" ON public.panic_events;
+CREATE POLICY "panic_events_select" ON public.panic_events
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "panic_events_update" ON public.panic_events;
+CREATE POLICY "panic_events_update" ON public.panic_events
+  FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+
+-- ── RLS: panic_locations ──────────────────────────────────────────────
+ALTER TABLE public.panic_locations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "panic_locations_select" ON public.panic_locations;
+CREATE POLICY "panic_locations_select" ON public.panic_locations
+  FOR SELECT TO authenticated
+  USING (
+    event_id IN (
+      SELECT id FROM public.panic_events WHERE user_id = auth.uid()
+    )
+  );
+
+-- ── RLS: notification_delivery_logs ──────────────────────────────────
+ALTER TABLE public.notification_delivery_logs ENABLE ROW LEVEL SECURITY;

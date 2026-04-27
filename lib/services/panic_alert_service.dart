@@ -20,7 +20,12 @@ class PanicAlertService {
 
   Future<String?> activatePanic({required String triggerSource}) async {
     final user = SupabaseService.client.auth.currentUser;
-    if (user == null || isActive) return null;
+    if (kDebugMode) print('🔍 PanicAlertService: user=${user?.id}, isActive=$isActive');
+    if (user == null) {
+      if (kDebugMode) print('❌ PanicAlertService: no hay sesión activa');
+      throw Exception('No hay sesión activa. Inicia sesión primero.');
+    }
+    if (isActive) return _activeEventId;
 
     HapticFeedback.heavyImpact();
 
@@ -29,39 +34,41 @@ class PanicAlertService {
       position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       ).timeout(const Duration(seconds: 5));
+      if (kDebugMode) print('📍 GPS: ${position.latitude}, ${position.longitude}');
     } catch (_) {
       try {
         position = await Geolocator.getLastKnownPosition();
+        if (kDebugMode) print('📍 GPS (last known): ${position?.latitude}, ${position?.longitude}');
       } catch (_) {}
     }
 
-    try {
-      final res = await SupabaseService.client
-          .from('panic_events')
-          .insert({
-            'user_id':        user.id,
-            'status':         'active',
-            'trigger_source': triggerSource,
-          })
-          .select('id')
-          .single();
+    if (kDebugMode) print('⏳ Insertando panic_event...');
+    final res = await SupabaseService.client
+        .from('panic_events')
+        .insert({
+          'user_id':        user.id,
+          'status':         'active',
+          'trigger_source': triggerSource,
+        })
+        .select('id')
+        .single();
 
-      _activeEventId = res['id'] as String;
+    _activeEventId = res['id'] as String;
+    if (kDebugMode) print('✅ panic_event creado: $_activeEventId');
 
-      // Fire-and-forget: no bloquear UI esperando respuesta del orchestrator
-      SupabaseService.client.functions.invoke('panic-orchestrator', body: {
-        'event_id':  _activeEventId,
-        'user_id':   user.id,
-        'latitude':  position?.latitude  ?? 0.0,
-        'longitude': position?.longitude ?? 0.0,
-      }).ignore();
+    SupabaseService.client.functions.invoke('panic-orchestrator', body: {
+      'event_id':  _activeEventId,
+      'user_id':   user.id,
+      'latitude':  position?.latitude  ?? 0.0,
+      'longitude': position?.longitude ?? 0.0,
+    }).then((r) {
+      if (kDebugMode) print('📡 orchestrator response: ${r.data}');
+    }).catchError((e) {
+      if (kDebugMode) print('❌ orchestrator error: $e');
+    });
 
-      _startLocationStream();
-      return _activeEventId;
-    } catch (e) {
-      if (kDebugMode) print('❌ PanicAlertService.activatePanic: $e');
-      return null;
-    }
+    _startLocationStream();
+    return _activeEventId;
   }
 
   void _startLocationStream() {
