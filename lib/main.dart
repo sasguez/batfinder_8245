@@ -3,11 +3,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../core/app_export.dart';
 import './firebase_options.dart';
-import './routes/app_routes.dart';
 import './services/supabase_service.dart';
 
 // Clave global para navegación desde handlers FCM en background
@@ -22,10 +22,20 @@ void main() async {
     if (kDebugMode) print('❌ Supabase init error: $e');
   }
 
-  // Firebase es opcional — requiere: flutterfire configure
+  // Verifica si ScreenListenerService activó un pánico mientras la app estaba cerrada
+  final prefs = await SharedPreferences.getInstance();
+  final panicPending = prefs.getBool('batfinder_panic_pending') ?? false;
+  if (panicPending) {
+    await prefs.remove('batfinder_panic_pending');
+    if (kDebugMode) print('🚨 main: panic_pending detectado — navegando a EmergencyPanicMode');
+  }
+
+  // Solo navega directamente a pánico si el usuario tiene sesión activa
+  final bool goToPanic = panicPending && SupabaseService.currentUser != null;
+
   await _initFirebase();
 
-  runApp(const MyApp());
+  runApp(MyApp(initialRoute: goToPanic ? AppRoutes.emergencyPanicMode : AppRoutes.splash));
 }
 
 Future<void> _initFirebase() async {
@@ -34,6 +44,13 @@ Future<void> _initFirebase() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     await FirebaseMessaging.instance.requestPermission();
+
+    // Registrar token propio si el usuario ya tiene sesión activa
+    if (SupabaseService.currentUser != null) {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) await SupabaseService.registerFCMToken(token);
+      FirebaseMessaging.instance.onTokenRefresh.listen(SupabaseService.registerFCMToken);
+    }
 
     FirebaseMessaging.onMessage.listen((message) {
       if (message.data['type'] == 'PANIC_ALERT') {
@@ -59,7 +76,9 @@ Future<void> _initFirebase() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String initialRoute;
+
+  const MyApp({super.key, this.initialRoute = AppRoutes.splash});
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +104,7 @@ class MyApp extends StatelessWidget {
           // 🚨 END CRITICAL SECTION
           debugShowCheckedModeBanner: false,
           routes: AppRoutes.routes,
-          initialRoute: AppRoutes.splash,
+          initialRoute: initialRoute,
         );
       },
     );

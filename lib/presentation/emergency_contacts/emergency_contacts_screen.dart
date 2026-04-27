@@ -94,6 +94,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                 phoneWa:       data['phone_wa'] as String?,
                 phoneSms:      data['phone_sms'] as String?,
                 hasApp:        data['has_app'] as bool,
+                fcmToken:      data['fcm_token'] as String?,
                 priority:      data['priority'] as int,
                 whatsappOptin: data['whatsapp_optin'] as bool,
               );
@@ -110,11 +111,12 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               await SupabaseService.updateEmergencyContactFull(
                 contactId: contact['id'] as String,
                 updates: {
-                  'name':          data['name'],
-                  'phone_wa':      data['phone_wa'],
-                  'phone_sms':     data['phone_sms'],
-                  'has_app':       data['has_app'],
-                  'priority':      data['priority'],
+                  'name':           data['name'],
+                  'phone_wa':       data['phone_wa'],
+                  'phone_sms':      data['phone_sms'],
+                  'has_app':        data['has_app'],
+                  'fcm_token':      data['fcm_token'],
+                  'priority':       data['priority'],
                   'whatsapp_optin': data['whatsapp_optin'],
                 },
               );
@@ -422,22 +424,28 @@ class _ContactFormState extends State<_ContactForm> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _phoneWaCtrl;
   late final TextEditingController _phoneSmsCtrl;
+  late final TextEditingController _emailCtrl;
 
-  bool _hasApp       = false;
-  bool _waOptin      = false;
-  int  _priority     = 1;
-  bool _saving       = false;
+  bool    _hasApp          = false;
+  bool    _waOptin         = false;
+  int     _priority        = 1;
+  bool    _saving          = false;
+  String? _fetchedFcmToken;
+  bool    _isLookingUp     = false;
+  bool    _lookupAttempted = false;
 
   @override
   void initState() {
     super.initState();
-    final c       = widget.contact;
-    _nameCtrl     = TextEditingController(text: c?['name']     as String? ?? '');
-    _phoneWaCtrl  = TextEditingController(text: c?['phone_wa'] as String? ?? '');
-    _phoneSmsCtrl = TextEditingController(text: c?['phone_sms'] as String? ?? '');
-    _hasApp       = c?['has_app']        as bool? ?? false;
-    _waOptin      = c?['whatsapp_optin'] as bool? ?? false;
-    _priority     = c?['priority']       as int?  ?? 1;
+    final c           = widget.contact;
+    _nameCtrl         = TextEditingController(text: c?['name']     as String? ?? '');
+    _phoneWaCtrl      = TextEditingController(text: c?['phone_wa'] as String? ?? '');
+    _phoneSmsCtrl     = TextEditingController(text: c?['phone_sms'] as String? ?? '');
+    _emailCtrl        = TextEditingController();
+    _hasApp           = c?['has_app']        as bool? ?? false;
+    _waOptin          = c?['whatsapp_optin'] as bool? ?? false;
+    _priority         = c?['priority']       as int?  ?? 1;
+    _fetchedFcmToken  = c?['fcm_token']      as String?;
   }
 
   @override
@@ -445,21 +453,37 @@ class _ContactFormState extends State<_ContactForm> {
     _nameCtrl.dispose();
     _phoneWaCtrl.dispose();
     _phoneSmsCtrl.dispose();
+    _emailCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _lookupFCMToken() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) return;
+    setState(() {
+      _isLookingUp     = true;
+      _lookupAttempted = true;
+    });
+    final token = await SupabaseService.lookupContactFCMToken(email);
+    setState(() {
+      _fetchedFcmToken = token;
+      _isLookingUp     = false;
+    });
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     await widget.onSaved({
-      'name':          _nameCtrl.text.trim(),
-      'phone_wa':      _phoneWaCtrl.text.trim().isEmpty
-                         ? null : _phoneWaCtrl.text.trim(),
-      'phone_sms':     _phoneSmsCtrl.text.trim().isEmpty
-                         ? null : _phoneSmsCtrl.text.trim(),
-      'has_app':       _hasApp,
+      'name':           _nameCtrl.text.trim(),
+      'phone_wa':       _phoneWaCtrl.text.trim().isEmpty
+                          ? null : _phoneWaCtrl.text.trim(),
+      'phone_sms':      _phoneSmsCtrl.text.trim().isEmpty
+                          ? null : _phoneSmsCtrl.text.trim(),
+      'has_app':        _hasApp,
+      'fcm_token':      _hasApp ? _fetchedFcmToken : null,
       'whatsapp_optin': _waOptin,
-      'priority':      _priority,
+      'priority':       _priority,
     });
     if (mounted) Navigator.pop(context);
   }
@@ -536,8 +560,73 @@ class _ContactFormState extends State<_ContactForm> {
                 title:    const Text('Tiene BatFinder instalado'),
                 subtitle: const Text('Recibirá notificaciones push (FCM)'),
                 value:    _hasApp,
-                onChanged: (v) => setState(() => _hasApp = v),
+                onChanged: (v) => setState(() {
+                  _hasApp = v;
+                  if (!v) {
+                    _fetchedFcmToken = null;
+                    _lookupAttempted = false;
+                  }
+                }),
               ),
+              if (_hasApp) ...[
+                SizedBox(height: 1.h),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _emailCtrl,
+                        decoration: const InputDecoration(
+                          labelText:  'Email en BatFinder',
+                          prefixIcon: Icon(Icons.email_outlined),
+                          hintText:   'correo@ejemplo.com',
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                    ),
+                    SizedBox(width: 2.w),
+                    IconButton(
+                      onPressed: _isLookingUp ? null : _lookupFCMToken,
+                      tooltip: 'Buscar token FCM',
+                      icon: _isLookingUp
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.search),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 0.8.h),
+                if (_fetchedFcmToken != null)
+                  Row(
+                    children: [
+                      Icon(Icons.check_circle_outline,
+                          color: theme.colorScheme.secondary, size: 16),
+                      SizedBox(width: 1.w),
+                      Text(
+                        'Notificación push habilitada',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.secondary,
+                        ),
+                      ),
+                    ],
+                  )
+                else if (_lookupAttempted)
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          color: theme.colorScheme.onSurfaceVariant, size: 16),
+                      SizedBox(width: 1.w),
+                      Text(
+                        'Usuario no encontrado en BatFinder',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title:    const Text('Opt-in WhatsApp'),

@@ -17,7 +17,6 @@ import '../../core/app_export.dart';
 import '../../services/panic_alert_service.dart';
 import '../../services/power_button_detector_service.dart';
 import '../../services/supabase_service.dart';
-import '../../widgets/custom_icon_widget.dart';
 import './widgets/emergency_contacts_widget.dart';
 import './widgets/emergency_header_widget.dart';
 import './widgets/emergency_services_widget.dart';
@@ -398,7 +397,14 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
 
       if (!mounted) return;
 
-      Navigator.of(context, rootNavigator: true).pop();
+      // Si la pantalla de pánico fue el punto de entrada (cold start desde servicio),
+      // pop() no tiene nada a donde volver → ir al dashboard explícitamente.
+      final nav = Navigator.of(context, rootNavigator: true);
+      if (nav.canPop()) {
+        nav.pop();
+      } else {
+        nav.pushNamedAndRemoveUntil(AppRoutes.alertDashboard, (_) => false);
+      }
     }
   }
 

@@ -579,6 +579,34 @@ class SupabaseService {
     }
   }
 
+  // Registra el FCM token del dispositivo actual en el perfil del usuario
+  // Requiere columna fcm_token en la tabla users
+  static Future<void> registerFCMToken(String token) async {
+    final userId = currentUserId;
+    if (userId == null) return;
+    try {
+      await client.from('users').update({'fcm_token': token}).eq('id', userId);
+      if (kDebugMode) print('✅ FCM token registrado');
+    } catch (e) {
+      if (kDebugMode) print('❌ registerFCMToken error: $e');
+    }
+  }
+
+  // Busca el FCM token de otro usuario por email para guardarlo en emergency_contacts
+  static Future<String?> lookupContactFCMToken(String email) async {
+    try {
+      final result = await client
+          .from('users')
+          .select('fcm_token')
+          .eq('email', email.trim().toLowerCase())
+          .maybeSingle();
+      return result?['fcm_token'] as String?;
+    } catch (e) {
+      if (kDebugMode) print('❌ lookupContactFCMToken error: $e');
+      return null;
+    }
+  }
+
   // =============================
   // EMERGENCY ALERTS (PANIC)
   // =============================
