@@ -27,6 +27,8 @@ class _AlertDetailsState extends State<AlertDetails> {
   bool _isLoading = true;
   String _loadError = '';
   bool _didLoad = false;
+  bool _isOwner = false;
+  bool _isUpdatingStatus = false;
 
   Map<String, dynamic> _alertData = {};
   List<Map<String, dynamic>> _mediaItems = [];
@@ -175,6 +177,7 @@ class _AlertDetailsState extends State<AlertDetails> {
       }
 
       setState(() {
+        _isOwner = data['reporter_id'] == SupabaseService.currentUserId;
         _alertData = {
           'id': data['id'],
           'type': _typeLabels[incidentType] ?? 'Incidente',
@@ -246,6 +249,69 @@ class _AlertDetailsState extends State<AlertDetails> {
     }
   }
 
+  Future<void> _updateStatus(String newStatus) async {
+    final isResolved = newStatus == 'resolved';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isResolved ? 'Marcar como resuelto' : 'Falsa alarma'),
+        content: Text(
+          isResolved
+              ? '¿Confirmas que la amenaza ya no está presente o el incidente fue atendido?'
+              : '¿Confirmas que este reporte fue un error o una falsa alarma?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: isResolved
+                ? null
+                : ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.error,
+                    foregroundColor: Theme.of(ctx).colorScheme.onError,
+                  ),
+            child: Text(isResolved ? 'Confirmar' : 'Sí, fue un error'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    setState(() => _isUpdatingStatus = true);
+    try {
+      await SupabaseService.updateIncidentStatus(
+        incidentId: _alertData['id'].toString(),
+        status: newStatus,
+      );
+      if (mounted) {
+        setState(() {
+          _alertData = Map<String, dynamic>.from(_alertData)
+            ..['status'] = newStatus;
+          _isUpdatingStatus = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isResolved
+                  ? 'Reporte marcado como resuelto.'
+                  : 'Reporte marcado como falsa alarma.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isUpdatingStatus = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al actualizar el estado.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -303,6 +369,14 @@ class _AlertDetailsState extends State<AlertDetails> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             IncidentHeaderWidget(alertData: _alertData),
+            if (_isOwner && _alertData['status'] == 'active')
+              _StatusManagementCard(
+                isUpdating: _isUpdatingStatus,
+                onResolved: () => _updateStatus('resolved'),
+                onFalseAlarm: () => _updateStatus('false_alarm'),
+              ),
+            if (_alertData['status'] != 'active')
+              _StatusBadge(status: _alertData['status'] as String),
             IncidentMapWidget(alertData: _alertData),
             if (_mediaItems.isNotEmpty) MediaGalleryWidget(mediaItems: _mediaItems),
             IncidentDescriptionWidget(
@@ -318,6 +392,128 @@ class _AlertDetailsState extends State<AlertDetails> {
             SizedBox(height: 2.h),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StatusManagementCard extends StatelessWidget {
+  final bool isUpdating;
+  final VoidCallback onResolved;
+  final VoidCallback onFalseAlarm;
+
+  const _StatusManagementCard({
+    required this.isUpdating,
+    required this.onResolved,
+    required this.onFalseAlarm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
+      padding: EdgeInsets.all(3.w),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.manage_history,
+                  size: 18, color: theme.colorScheme.primary),
+              SizedBox(width: 2.w),
+              Text(
+                'Gestionar mi reporte',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 1.5.h),
+          if (isUpdating)
+            Center(
+              child: CircularProgressIndicator(
+                color: theme.colorScheme.primary,
+              ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onResolved,
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: const Text('Resuelto'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.primary,
+                      side: BorderSide(color: theme.colorScheme.primary),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 3.w),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onFalseAlarm,
+                    icon: const Icon(Icons.warning_amber_outlined, size: 18),
+                    label: const Text('Falsa alarma'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isResolved = status == 'resolved';
+    final color =
+        isResolved ? theme.colorScheme.primary : theme.colorScheme.error;
+    final label = isResolved ? 'Resuelto' : 'Falsa alarma';
+    final icon =
+        isResolved ? Icons.check_circle : Icons.warning_amber_rounded;
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          SizedBox(width: 2.w),
+          Text(
+            'Este reporte fue marcado como: $label',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
