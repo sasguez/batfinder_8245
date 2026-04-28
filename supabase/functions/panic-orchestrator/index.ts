@@ -112,7 +112,9 @@ async function getFCMAccessToken(clientEmail: string, privateKeyPem: string): Pr
   const signingInput = `${encode(header)}.${encode(payload)}`;
 
   // Limpia el PEM y lo convierte a ArrayBuffer
+  // Normaliza \n literales (como los guarda Supabase Secrets) a saltos de línea reales
   const pemBody = privateKeyPem
+    .replace(/\\n/g, "\n")
     .replace(/-----BEGIN PRIVATE KEY-----/, "")
     .replace(/-----END PRIVATE KEY-----/, "")
     .replace(/\s/g, "");

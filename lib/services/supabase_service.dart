@@ -607,6 +607,26 @@ class SupabaseService {
     }
   }
 
+  // Verifica si el usuario tiene al menos un contacto con canal de notificación válido
+  static Future<bool> hasValidEmergencyContacts() async {
+    final userId = currentUserId;
+    if (userId == null) return false;
+    try {
+      final contacts = await client
+          .from('emergency_contacts')
+          .select('phone_wa, whatsapp_optin, has_app, fcm_token')
+          .eq('user_id', userId);
+      return (contacts as List).any((c) =>
+          (c['whatsapp_optin'] == true &&
+              (c['phone_wa'] as String?)?.isNotEmpty == true) ||
+          (c['has_app'] == true &&
+              (c['fcm_token'] as String?)?.isNotEmpty == true));
+    } catch (e) {
+      if (kDebugMode) print('❌ hasValidEmergencyContacts error: $e');
+      return false;
+    }
+  }
+
   // =============================
   // EMERGENCY ALERTS (PANIC)
   // =============================

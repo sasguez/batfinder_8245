@@ -22,6 +22,7 @@ class AlertDashboardInitialPage extends StatefulWidget {
 class _AlertDashboardInitialPageState
     extends State<AlertDashboardInitialPage> {
   bool _isLoading = true;
+  bool _hasValidContacts = false;
   // ignore: prefer_final_fields — will be updated with real GPS location
   String _currentLocation = 'Colombia';
   DateTime _lastUpdated = DateTime.now();
@@ -182,16 +183,19 @@ class _AlertDashboardInitialPageState
       final results = await Future.wait([
         SupabaseService.getIncidents(status: 'active', limit: 20),
         SupabaseService.getDashboardStatistics(),
+        SupabaseService.hasValidEmergencyContacts(),
       ]);
 
       final rawIncidents = results[0] as List<Map<String, dynamic>>;
       final stats = results[1] as Map<String, dynamic>;
+      final hasContacts = results[2] as bool;
 
       if (mounted) {
         setState(() {
           _incidents = rawIncidents.map(_mapIncident).toList();
           _stats = stats;
           _safetyScore = _calcSafetyScore(stats);
+          _hasValidContacts = hasContacts;
           _lastUpdated = DateTime.now();
           _isLoading = false;
         });
@@ -316,46 +320,71 @@ class _AlertDashboardInitialPageState
                 ),
               ),
               SizedBox(width: 2.w),
-              // SOS button
-              Container(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.error,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.error.withValues(alpha: 0.3),
-                      blurRadius: 8.0,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _handleEmergencyPanic,
+              // SOS button — solo activo si hay contactos válidos
+              Opacity(
+                opacity: _hasValidContacts ? 1.0 : 0.4,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.error,
                     borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 4.w,
-                        vertical: 1.5.h,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CustomIconWidget(
-                            iconName: 'emergency',
-                            color: theme.colorScheme.onError,
-                            size: 20,
-                          ),
-                          SizedBox(width: 2.w),
-                          Text(
-                            'SOS',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              color: theme.colorScheme.onError,
-                              fontWeight: FontWeight.w700,
+                    boxShadow: _hasValidContacts
+                        ? [
+                            BoxShadow(
+                              color:
+                                  theme.colorScheme.error.withValues(alpha: 0.3),
+                              blurRadius: 8.0,
+                              offset: const Offset(0, 2),
                             ),
-                          ),
-                        ],
+                          ]
+                        : [],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _hasValidContacts
+                          ? _handleEmergencyPanic
+                          : () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text(
+                                    'Agrega al menos un contacto de emergencia con WhatsApp o con la app de BatFinder para activar el SOS.',
+                                  ),
+                                  action: SnackBarAction(
+                                    label: 'Agregar',
+                                    onPressed: () => Navigator.of(
+                                      context,
+                                      rootNavigator: true,
+                                    ).pushNamed('/emergency-contacts'),
+                                  ),
+                                  duration: const Duration(seconds: 5),
+                                ),
+                              );
+                            },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 4.w,
+                          vertical: 1.5.h,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CustomIconWidget(
+                              iconName:
+                                  _hasValidContacts ? 'emergency' : 'lock',
+                              color: theme.colorScheme.onError,
+                              size: 20,
+                            ),
+                            SizedBox(width: 2.w),
+                            Text(
+                              'SOS',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: theme.colorScheme.onError,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

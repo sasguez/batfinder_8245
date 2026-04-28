@@ -30,6 +30,10 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
+    //aun falta que solo si tiene al menos un contacto asociado que
+    /*
+        le permita realizar las alertas
+     */
 
     defaultConfig {
         applicationId = "com.batfinder.android"
