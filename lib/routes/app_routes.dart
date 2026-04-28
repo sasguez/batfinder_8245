@@ -15,6 +15,7 @@ import '../presentation/community_safety_chat/community_safety_chat.dart';
 import '../presentation/realtime_dashboard/realtime_dashboard_screen.dart';
 import '../presentation/enhanced_map_screen/enhanced_map_screen.dart';
 import '../presentation/profile_edit_screen/profile_edit_screen.dart';
+import '../presentation/emergency_contacts/emergency_contacts_screen.dart';
 import '../presentation/incident_reporting/widgets/offline_queue_widget.dart';
 
 class AppRoutes {
@@ -34,6 +35,7 @@ class AppRoutes {
   static const String enhancedMapScreen = '/enhanced-map';
   static const String profileEditScreen = '/profile-edit';
   static const String offlineQueue = '/offline-queue';
+  static const String emergencyContacts = '/emergency-contacts';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -52,7 +54,8 @@ class AppRoutes {
       realtimeDashboard: (context) => const RealtimeDashboardScreen(),
       enhancedMapScreen: (context) => const EnhancedMapScreen(),
       profileEditScreen: (context) => const ProfileEditScreen(),
-      offlineQueue: (context) => const OfflineQueueWidget(),
+      offlineQueue:        (context) => const OfflineQueueWidget(),
+      emergencyContacts:   (context) => const EmergencyContactsScreen(),
     };
   }
 }

@@ -14,9 +14,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/panic_alert_service.dart';
 import '../../services/power_button_detector_service.dart';
 import '../../services/supabase_service.dart';
-import '../../widgets/custom_icon_widget.dart';
 import './widgets/emergency_contacts_widget.dart';
 import './widgets/emergency_header_widget.dart';
 import './widgets/emergency_services_widget.dart';
@@ -35,7 +35,6 @@ class EmergencyPanicMode extends StatefulWidget {
 class _EmergencyPanicModeState extends State<EmergencyPanicMode>
     with WidgetsBindingObserver {
   PowerButtonDetectorService? _powerDetector;
-  String? _alertId;
 
   // Emergency state
   int _remainingSeconds = 120; // 2 minutes default countdown
@@ -108,11 +107,21 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
     await _startAudioRecording();
     await _initializeCamera();
 
-    // Cargar contactos reales y registrar alerta en Supabase
     await _loadEmergencyContacts();
-    await _createEmergencyAlert();
-
-    _showEmergencyToast('Modo de emergencia activado');
+    try {
+      final eventId = await PanicAlertService().activatePanic(triggerSource: 'button');
+      if (kDebugMode) print('✅ EmergencyPanicMode: eventId=$eventId');
+      if (mounted) {
+        setState(() {
+          _emergencyContacts =
+              _emergencyContacts.map((c) => {...c, 'notified': true}).toList();
+        });
+      }
+      _showEmergencyToast('Modo de emergencia activado');
+    } catch (e) {
+      if (kDebugMode) print('❌ EmergencyPanicMode.activatePanic: $e');
+      _showEmergencyToast('Error: $e');
+    }
   }
 
   Future<void> _loadEmergencyContacts() async {
@@ -122,31 +131,13 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
       setState(() {
         _emergencyContacts = data.map((c) => {
           'name': c['name'] as String,
-          'phone': c['phone'] as String,
+          // Usa phone_wa si existe, cae en phone legacy como fallback
+          'phone': (c['phone_wa'] ?? c['phone'] ?? '') as String,
           'notified': false,
         }).toList();
       });
     } catch (e) {
       if (kDebugMode) print('❌ Load emergency contacts error: $e');
-    }
-  }
-
-  Future<void> _createEmergencyAlert() async {
-    try {
-      final id = await SupabaseService.createEmergencyAlert(
-        latitude: _latitude != 0.0 ? _latitude : null,
-        longitude: _longitude != 0.0 ? _longitude : null,
-      );
-      if (id == null || !mounted) return;
-      _alertId = id;
-      // Marcar todos los contactos como notificados una vez registrada la alerta
-      setState(() {
-        _emergencyContacts = _emergencyContacts
-            .map((c) => {...c, 'notified': true})
-            .toList();
-      });
-    } catch (e) {
-      if (kDebugMode) print('❌ Create emergency alert error: $e');
     }
   }
 
@@ -393,10 +384,8 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
       }
       _cameraController?.dispose();
 
-      // Marcar alerta como cancelada en Supabase
-      if (_alertId != null) {
-        await SupabaseService.cancelEmergencyAlert(_alertId!);
-      }
+      // Resuelve el panic_event y detiene el stream GPS
+      await PanicAlertService().resolvePanic(resolution: 'false_alarm');
 
       if (!mounted) return;
 
@@ -408,7 +397,14 @@ class _EmergencyPanicModeState extends State<EmergencyPanicMode>
 
       if (!mounted) return;
 
-      Navigator.of(context, rootNavigator: true).pop();
+      // Si la pantalla de pánico fue el punto de entrada (cold start desde servicio),
+      // pop() no tiene nada a donde volver → ir al dashboard explícitamente.
+      final nav = Navigator.of(context, rootNavigator: true);
+      if (nav.canPop()) {
+        nav.pop();
+      } else {
+        nav.pushNamedAndRemoveUntil(AppRoutes.alertDashboard, (_) => false);
+      }
     }
   }
 

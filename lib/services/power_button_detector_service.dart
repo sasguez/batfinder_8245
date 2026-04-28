@@ -1,28 +1,33 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
-/// Detecta pulsaciones rápidas del botón de bloqueo mediante ciclos
-/// AppLifecycleState.paused → resumed dentro de una ventana de tiempo.
+/// Detecta pulsaciones del botón de encendido escuchando eventos nativos
+/// de Android (ACTION_SCREEN_OFF / ACTION_SCREEN_ON) via EventChannel.
 ///
-/// Limitación de plataforma: Flutter no expone acceso directo al botón de bloqueo.
-/// La detección funciona solo con la app en foreground.
-/// En iOS el ciclo paused/resumed puede tener mayor latencia que en Android,
-/// por lo que la ventana de tiempo puede ser insuficiente en algunos dispositivos Apple.
-class PowerButtonDetectorService with WidgetsBindingObserver {
-  static const Duration _tapWindow = Duration(milliseconds: 1500);
-  static const Duration _minPauseDuration = Duration(milliseconds: 100);
-  static const Duration _maxPauseDuration = Duration(milliseconds: 800);
+/// Flujo con requiredTaps = 3:
+///   Apaga pantalla (1) → enciende → toast "1/3"
+///   Apaga pantalla (2) → enciende → toast "2/3"
+///   Apaga pantalla (3) → enciende → PÁNICO ACTIVADO
+///
+/// Ventaja sobre el lifecycle: funciona aunque el dispositivo tenga
+/// pantalla de bloqueo, ya que el BroadcastReceiver nativo recibe
+/// SCREEN_OFF sin necesitar que el usuario desbloquee.
+class PowerButtonDetectorService {
+  static const EventChannel _screenChannel =
+      EventChannel('com.batfinder.android/screen_events');
+  static const Duration _tapWindow = Duration(seconds: 5);
 
-  /// Número de pulsaciones requeridas (2 = doble, 3 = triple). Default: 3.
   final int requiredTaps;
   final VoidCallback onTrigger;
 
   int _tapCount = 0;
-  DateTime? _lastPaused;
+  bool _triggerPending = false;
   Timer? _resetTimer;
+  StreamSubscription<dynamic>? _subscription;
   bool _active = false;
 
   PowerButtonDetectorService({
@@ -33,55 +38,61 @@ class PowerButtonDetectorService with WidgetsBindingObserver {
   void start() {
     if (_active) return;
     _active = true;
-    WidgetsBinding.instance.addObserver(this);
+    _subscription = _screenChannel
+        .receiveBroadcastStream()
+        .listen(_onScreenEvent, onError: (_) {});
   }
 
   void stop() {
     _active = false;
     _tapCount = 0;
+    _triggerPending = false;
     _resetTimer?.cancel();
-    WidgetsBinding.instance.removeObserver(this);
+    _subscription?.cancel();
+    _subscription = null;
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void _onScreenEvent(dynamic event) {
     if (!_active) return;
 
-    if (state == AppLifecycleState.paused) {
-      _lastPaused = DateTime.now();
-    }
+    if (event == 'screen_off') {
+      _tapCount++;
+      _resetTimer?.cancel();
 
-    if (state == AppLifecycleState.resumed && _lastPaused != null) {
-      final pauseDuration = DateTime.now().difference(_lastPaused!);
+      if (kDebugMode) print('🔴 Power press: $_tapCount/$requiredTaps');
 
-      // Solo contar si fue una pulsación corta (no bloqueo prolongado)
-      if (pauseDuration >= _minPauseDuration &&
-          pauseDuration <= _maxPauseDuration) {
-        _tapCount++;
-        _resetTimer?.cancel();
-
-        if (kDebugMode) print('🔴 Power tap: $_tapCount/$requiredTaps');
-
-        if (_tapCount >= requiredTaps) {
+      if (_tapCount >= requiredTaps) {
+        _tapCount = 0;
+        _triggerPending = true;
+        // Dispara en el próximo screen_on para que la navegación
+        // ocurra con la pantalla activa.
+      } else {
+        _resetTimer = Timer(_tapWindow, () {
+          if (kDebugMode) print('🔴 Power tap reset (timeout)');
           _tapCount = 0;
-          onTrigger();
-        } else {
-          Fluttertoast.showToast(
-            msg:
-                'Toque $_tapCount/$requiredTaps — sigue pulsando para activar pánico',
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.TOP,
-          );
-          // Resetear contador si no completa la secuencia en tiempo
-          _resetTimer = Timer(_tapWindow, () => _tapCount = 0);
-        }
+        });
       }
-      _lastPaused = null;
+    }
+
+    if (event == 'screen_on') {
+      if (_triggerPending) {
+        _triggerPending = false;
+        onTrigger();
+      } else if (_tapCount > 0) {
+        final remaining = requiredTaps - _tapCount;
+        Fluttertoast.showToast(
+          msg: '🚨 SOS: $_tapCount/$requiredTaps'
+              ' — apaga la pantalla $remaining'
+              ' ${remaining == 1 ? 'vez' : 'veces'} más',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.TOP,
+          backgroundColor: Colors.red.shade700,
+          textColor: Colors.white,
+          fontSize: 14,
+        );
+      }
     }
   }
 
-  void dispose() {
-    stop();
-    _resetTimer?.cancel();
-  }
+  void dispose() => stop();
 }

@@ -1,7 +1,7 @@
 name: batfinder
 description: A Flutter project of alert security.
 publish_to: none
-version: 1.0.0+1
+version: 1.7.2+1
 
 environment:
   sdk: ^3.9.0
@@ -45,6 +45,8 @@ dependencies:
   path: any
 
   universal_html: ^2.2.4
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.5
 dev_dependencies:
   flutter_test:    # CRITICAL: Required for Flutter project testing - DO NOT REMOVE
     sdk: flutter   # CRITICAL: Required for Flutter project testing - DO NOT REMOVE
