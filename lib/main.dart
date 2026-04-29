@@ -8,7 +8,9 @@ import 'package:sizer/sizer.dart';
 
 import '../core/app_export.dart';
 import './firebase_options.dart';
+import './services/sound_service.dart';
 import './services/supabase_service.dart';
+import './services/vibration_service.dart';
 
 // Clave global para navegación desde handlers FCM en background
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -52,7 +54,9 @@ Future<void> _initFirebase() async {
       FirebaseMessaging.instance.onTokenRefresh.listen(SupabaseService.registerFCMToken);
     }
 
-    FirebaseMessaging.onMessage.listen((message) {
+    FirebaseMessaging.onMessage.listen((message) async {
+      await SoundService().playAlertSound();
+      await VibrationService().vibrateAlert();
       if (message.data['type'] == 'PANIC_ALERT') {
         Fluttertoast.showToast(
           msg: '🚨 ${message.notification?.title ?? "Alerta de pánico recibida"}',

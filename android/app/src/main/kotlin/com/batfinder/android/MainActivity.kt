@@ -1,7 +1,13 @@
 package com.batfinder.android
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.ContentResolver
 import android.content.Intent
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -10,6 +16,34 @@ class MainActivity : FlutterFragmentActivity() {
 
     private val SCREEN_CHANNEL = "com.batfinder.android/screen_events"
     private var eventSink: EventChannel.EventSink? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        createAlertNotificationChannel()
+    }
+
+    private fun createAlertNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val soundUri = Uri.parse(
+            "${ContentResolver.SCHEME_ANDROID_RESOURCE}://${packageName}/raw/batfinder_alert"
+        )
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        val channel = NotificationChannel(
+            "batfinder_alerts",
+            "Alertas BatFinder",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Alertas de seguridad comunitaria"
+            setSound(soundUri, audioAttributes)
+            enableLights(true)
+            enableVibration(true)
+        }
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

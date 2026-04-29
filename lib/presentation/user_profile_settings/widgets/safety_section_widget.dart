@@ -176,7 +176,7 @@ class _SafetySectionWidgetState extends State<SafetySectionWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Contactos de Pánico',
+                          'Contactos de Emergencia',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w500,
                           ),

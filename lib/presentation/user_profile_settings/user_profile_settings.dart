@@ -70,6 +70,7 @@ class _UserProfileSettingsState extends State<UserProfileSettings> {
       'verifiedPhone': p['is_phone_verified'] ?? false,
       'verifiedEmail': SupabaseService.currentUser?.emailConfirmedAt != null,
       'verifiedDocuments': p['is_documents_verified'] ?? false,
+      'nickname': p['nickname'] as String? ?? '',
     };
   }
 
@@ -89,6 +90,7 @@ class _UserProfileSettingsState extends State<UserProfileSettings> {
       'verifiedPhone': false,
       'verifiedEmail': user?.emailConfirmedAt != null,
       'verifiedDocuments': false,
+      'nickname': '',
     };
   }
 
@@ -169,10 +171,19 @@ class _UserProfileSettingsState extends State<UserProfileSettings> {
             bottom: false,
             child: Row(
               children: [
-                CustomIconWidget(
-                  iconName: 'arrow_back',
-                  color: theme.colorScheme.onSurface,
-                  size: 24,
+                GestureDetector(
+                  onTap: () {
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                    } else {
+                      Navigator.of(context).pushReplacementNamed('/alert-dashboard');
+                    }
+                  },
+                  child: CustomIconWidget(
+                    iconName: 'arrow_back',
+                    color: theme.colorScheme.onSurface,
+                    size: 24,
+                  ),
                 ),
                 SizedBox(width: 4.w),
                 Text(

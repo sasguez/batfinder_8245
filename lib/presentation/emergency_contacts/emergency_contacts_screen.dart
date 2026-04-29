@@ -4,6 +4,10 @@ import 'package:sizer/sizer.dart';
 
 import '../../services/supabase_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:intl_phone_field/countries.dart';
+
 import '../../widgets/custom_icon_widget.dart';
 
 class EmergencyContactsScreen extends StatefulWidget {
@@ -45,7 +49,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar contacto'),
-        content: Text('¿Eliminar a ${contact['name']} de tus contactos de pánico?'),
+        content: Text('¿Eliminar a ${contact['name']} de tus Contactos de Emergencia?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -143,7 +147,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomAppBar(title: 'Contactos de Pánico'),
+      appBar: CustomAppBar(title: 'Contactos de Emergencia'),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
@@ -342,7 +346,7 @@ class _EmptyView extends StatelessWidget {
             ),
             SizedBox(height: 2.h),
             Text(
-              'Sin contactos de pánico',
+              'Sin Contactos de Emergencia',
               style: theme.textTheme.titleMedium,
             ),
             SizedBox(height: 1.h),
@@ -422,9 +426,17 @@ class _ContactFormState extends State<_ContactForm> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _nameCtrl;
-  late final TextEditingController _phoneWaCtrl;
-  late final TextEditingController _phoneSmsCtrl;
-  late final TextEditingController _emailCtrl;
+  late final TextEditingController _searchCtrl;
+
+  // Números completos con código de país (ej: +573001234567)
+  String _phoneWaComplete = '';
+  String _phoneSmsComplete = '';
+
+  // Valores iniciales para IntlPhoneField al editar
+  String _initialWaCountry  = 'CO';
+  String _initialSmsCountry = 'CO';
+  String _initialWaNumber   = '';
+  String _initialSmsNumber  = '';
 
   bool    _hasApp          = false;
   bool    _waOptin         = false;
@@ -433,53 +445,115 @@ class _ContactFormState extends State<_ContactForm> {
   String? _fetchedFcmToken;
   bool    _isLookingUp     = false;
   bool    _lookupAttempted = false;
+  String? _foundUserName;
 
   @override
   void initState() {
     super.initState();
-    final c           = widget.contact;
-    _nameCtrl         = TextEditingController(text: c?['name']     as String? ?? '');
-    _phoneWaCtrl      = TextEditingController(text: c?['phone_wa'] as String? ?? '');
-    _phoneSmsCtrl     = TextEditingController(text: c?['phone_sms'] as String? ?? '');
-    _emailCtrl        = TextEditingController();
-    _hasApp           = c?['has_app']        as bool? ?? false;
-    _waOptin          = c?['whatsapp_optin'] as bool? ?? false;
-    _priority         = c?['priority']       as int?  ?? 1;
-    _fetchedFcmToken  = c?['fcm_token']      as String?;
+    final c          = widget.contact;
+    _nameCtrl        = TextEditingController(text: c?['name'] as String? ?? '');
+    _searchCtrl       = TextEditingController();
+    _hasApp          = c?['has_app']        as bool? ?? false;
+    _waOptin         = c?['whatsapp_optin'] as bool? ?? false;
+    _priority        = c?['priority']       as int?  ?? 1;
+    _fetchedFcmToken = c?['fcm_token']      as String?;
+
+    final waRaw  = c?['phone_wa']  as String? ?? '';
+    final smsRaw = c?['phone_sms'] as String? ?? '';
+
+    _phoneWaComplete  = waRaw;
+    _phoneSmsComplete = smsRaw;
+
+    final deviceCountry =
+        SchedulerBinding.instance.platformDispatcher.locale.countryCode ?? 'CO';
+    _initialWaCountry  = _detectCountry(waRaw, deviceCountry);
+    _initialSmsCountry = _detectCountry(smsRaw, deviceCountry);
+    _initialWaNumber   = _stripKnownDialCode(waRaw, _initialWaCountry);
+    _initialSmsNumber  = _stripKnownDialCode(smsRaw, _initialSmsCountry);
+  }
+
+  // Elimina el prefijo +CC para mostrar solo el número local en el campo
+  String _stripKnownDialCode(String full, String countryCode) {
+    if (full.isEmpty || !full.startsWith('+')) return full;
+    try {
+      final dial = countries.firstWhere((c) => c.code == countryCode).dialCode;
+      if (full.startsWith('+$dial')) return full.substring(1 + dial.length);
+    } catch (_) {}
+    return full;
+  }
+
+  String _detectCountry(String fullNumber, String fallback) {
+    if (fullNumber.isEmpty || !fullNumber.startsWith('+')) return fallback;
+    final withoutPlus = fullNumber.substring(1);
+    final sorted = [...countries]
+      ..sort((a, b) => b.dialCode.length.compareTo(a.dialCode.length));
+    for (final c in sorted) {
+      if (withoutPlus.startsWith(c.dialCode)) return c.code;
+    }
+    return fallback;
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _phoneWaCtrl.dispose();
-    _phoneSmsCtrl.dispose();
-    _emailCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _lookupFCMToken() async {
-    final email = _emailCtrl.text.trim();
-    if (email.isEmpty) return;
+  String? _validateSearchQuery(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final v = value.trim();
+    if (v.startsWith('@')) {
+      final nick = v.substring(1);
+      if (nick.isEmpty) return 'Escribe un nickname despues de @';
+      if (nick.length < 3) return 'El nickname debe tener minimo 3 caracteres';
+      if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(nick)) {
+        return 'Solo letras, numeros y guion bajo (_)';
+      }
+      return null;
+    } else if (v.contains('@')) {
+      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(v)) {
+        return 'Correo electronico no valido';
+      }
+      return null;
+    } else {
+      if (!v.startsWith('+')) {
+        return 'Telefono debe iniciar con + (ej: +573001234567)';
+      }
+      if (v.length < 8) return 'Numero de telefono muy corto';
+      return null;
+    }
+  }
+
+  Future<void> _lookupUser() async {
+    final query = _searchCtrl.text.trim();
+    if (query.isEmpty) return;
     setState(() {
       _isLookingUp     = true;
       _lookupAttempted = true;
+      _foundUserName   = null;
     });
-    final token = await SupabaseService.lookupContactFCMToken(email);
+    final result = await SupabaseService.lookupUserForFCM(query);
+    if (!mounted) return;
     setState(() {
-      _fetchedFcmToken = token;
-      _isLookingUp     = false;
+      _fetchedFcmToken = result?['fcm_token'] as String?;
+      if (result != null) {
+        final name     = result['full_name'] as String? ?? '';
+        final nickname = result['nickname']  as String?;
+        _foundUserName = nickname != null ? '$name (@$nickname)' : name;
+      }
+      _isLookingUp = false;
     });
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
     setState(() => _saving = true);
     await widget.onSaved({
       'name':           _nameCtrl.text.trim(),
-      'phone_wa':       _phoneWaCtrl.text.trim().isEmpty
-                          ? null : _phoneWaCtrl.text.trim(),
-      'phone_sms':      _phoneSmsCtrl.text.trim().isEmpty
-                          ? null : _phoneSmsCtrl.text.trim(),
+      'phone_wa':       _phoneWaComplete.isEmpty ? null : _phoneWaComplete,
+      'phone_sms':      _phoneSmsComplete.isEmpty ? null : _phoneSmsComplete,
       'has_app':        _hasApp,
       'fcm_token':      _hasApp ? _fetchedFcmToken : null,
       'whatsapp_optin': _waOptin,
@@ -536,24 +610,39 @@ class _ContactFormState extends State<_ContactForm> {
                     (v == null || v.trim().isEmpty) ? 'Campo requerido' : null,
               ),
               SizedBox(height: 2.h),
-              TextFormField(
-                controller: _phoneWaCtrl,
+              IntlPhoneField(
                 decoration: const InputDecoration(
-                  labelText:  'Teléfono WhatsApp',
-                  prefixIcon: Icon(Icons.chat_outlined),
-                  hintText:   '+57 300 000 0000',
+                  labelText: 'Teléfono WhatsApp',
+                  border: OutlineInputBorder(),
                 ),
-                keyboardType: TextInputType.phone,
+                initialCountryCode: _initialWaCountry,
+                initialValue: _initialWaNumber,
+                languageCode: 'es',
+                searchText: 'Busca tu país...',
+                onChanged: (phone) {
+                  _phoneWaComplete = phone.completeNumber;
+                },
+                onSaved: (phone) {
+                  if (phone != null) _phoneWaComplete = phone.completeNumber;
+                },
               ),
               SizedBox(height: 2.h),
-              TextFormField(
-                controller: _phoneSmsCtrl,
+              IntlPhoneField(
                 decoration: const InputDecoration(
-                  labelText:  'Teléfono SMS',
-                  prefixIcon: Icon(Icons.sms_outlined),
-                  hintText:   '+57 300 000 0000',
+                  labelText: 'Teléfono SMS (opcional)',
+                  border: OutlineInputBorder(),
                 ),
-                keyboardType: TextInputType.phone,
+                initialCountryCode: _initialSmsCountry,
+                initialValue: _initialSmsNumber,
+                languageCode: 'es',
+                searchText: 'Busca tu pais...',
+                onChanged: (phone) {
+                  _phoneSmsComplete = phone.completeNumber;
+                },
+                onSaved: (phone) {
+                  if (phone != null) _phoneSmsComplete = phone.completeNumber;
+                },
+                validator: (_) => null, // SMS es opcional
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -564,38 +653,44 @@ class _ContactFormState extends State<_ContactForm> {
                   _hasApp = v;
                   if (!v) {
                     _fetchedFcmToken = null;
+                    _foundUserName   = null;
+                    _searchCtrl.clear();
                     _lookupAttempted = false;
                   }
                 }),
               ),
               if (_hasApp) ...[
                 SizedBox(height: 1.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _emailCtrl,
-                        decoration: const InputDecoration(
-                          labelText:  'Email en BatFinder',
-                          prefixIcon: Icon(Icons.email_outlined),
-                          hintText:   'correo@ejemplo.com',
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                      ),
+                TextFormField(
+                  controller: _searchCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Buscar usuario en BatFinder',
+                    prefixIcon: Icon(Icons.manage_search_outlined),
+                    hintText: '@nickname, correo@ejemplo.com o +573001234567',
+                    helperText: 'Busca por @nickname, correo o telefono con codigo de pais',
+                    helperMaxLines: 2,
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: _validateSearchQuery,
+                ),
+                SizedBox(height: 1.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLookingUp ? null : _lookupUser,
+                    icon: _isLookingUp
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.search, size: 18),
+                    label: Text(
+                      _isLookingUp ? 'Buscando...' : 'Buscar usuario',
                     ),
-                    SizedBox(width: 2.w),
-                    IconButton(
-                      onPressed: _isLookingUp ? null : _lookupFCMToken,
-                      tooltip: 'Buscar token FCM',
-                      icon: _isLookingUp
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.search),
-                    ),
-                  ],
+                  ),
                 ),
                 SizedBox(height: 0.8.h),
                 if (_fetchedFcmToken != null)
@@ -604,10 +699,14 @@ class _ContactFormState extends State<_ContactForm> {
                       Icon(Icons.check_circle_outline,
                           color: theme.colorScheme.secondary, size: 16),
                       SizedBox(width: 1.w),
-                      Text(
-                        'Notificación push habilitada',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.secondary,
+                      Expanded(
+                        child: Text(
+                          _foundUserName != null
+                              ? 'Push activo - $_foundUserName'
+                              : 'Notificacion push habilitada',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.secondary,
+                          ),
                         ),
                       ),
                     ],

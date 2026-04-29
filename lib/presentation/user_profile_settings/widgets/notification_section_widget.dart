@@ -1,8 +1,12 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../services/sound_service.dart';
+import '../../../services/vibration_service.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
 class NotificationSectionWidget extends StatefulWidget {
@@ -21,6 +25,7 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
   bool _soundEnabled = true;
   bool _vibrationEnabled = true;
   String _selectedLanguage = 'es';
+  bool _isAutoDetected = false;
 
   @override
   void initState() {
@@ -30,17 +35,27 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _proximityWarnings = prefs.getBool('notif_proximity') ?? true;
-        _communityUpdates = prefs.getBool('notif_community') ?? true;
-        _emergencyBroadcasts = prefs.getBool('notif_emergency') ?? true;
-        _authorityAnnouncements = prefs.getBool('notif_authority') ?? false;
-        _soundEnabled = prefs.getBool('notif_sound') ?? true;
-        _vibrationEnabled = prefs.getBool('notif_vibration') ?? true;
-        _selectedLanguage = prefs.getString('app_language') ?? 'es';
-      });
-    }
+    if (!mounted) return;
+    final savedLanguage = prefs.getString('app_language');
+    final autoDetected = savedLanguage == null;
+    final language = savedLanguage ?? _detectLocaleLanguage();
+    if (autoDetected) await prefs.setString('app_language', language);
+    setState(() {
+      _proximityWarnings = prefs.getBool('notif_proximity') ?? true;
+      _communityUpdates = prefs.getBool('notif_community') ?? true;
+      _emergencyBroadcasts = prefs.getBool('notif_emergency') ?? true;
+      _authorityAnnouncements = prefs.getBool('notif_authority') ?? false;
+      _soundEnabled = prefs.getBool('notif_sound') ?? true;
+      _vibrationEnabled = prefs.getBool('notif_vibration') ?? true;
+      _selectedLanguage = language;
+      _isAutoDetected = autoDetected;
+    });
+  }
+
+  String _detectLocaleLanguage() {
+    final code = ui.PlatformDispatcher.instance.locale.languageCode;
+    const supported = {'es', 'en'};
+    return supported.contains(code) ? code : 'es';
   }
 
   Future<void> _saveBool(String key, bool value) async {
@@ -155,6 +170,7 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
             onChanged: (value) {
               setState(() => _soundEnabled = value);
               _saveBool('notif_sound', value);
+              if (value) SoundService().playTestSound();
             },
           ),
 
@@ -169,6 +185,7 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
             onChanged: (value) {
               setState(() => _vibrationEnabled = value);
               _saveBool('notif_vibration', value);
+              if (value) VibrationService().testVibration();
             },
           ),
 
@@ -205,13 +222,33 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(height: 0.5.h),
-                      Text(
-                        _selectedLanguage == 'es' ? 'Español' : 'English',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                      SizedBox(height: 0.4.h),
+                      if (_isAutoDetected)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 2.w,
+                            vertical: 0.3.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.secondary
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Auto-detectado',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.secondary,
+                              fontSize: 9.sp,
+                            ),
+                          ),
+                        )
+                      else
+                        Text(
+                          _selectedLanguage == 'es' ? 'Español' : 'English',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -224,7 +261,10 @@ class _NotificationSectionWidgetState extends State<NotificationSectionWidget> {
                   ],
                   onChanged: (val) {
                     if (val != null) {
-                      setState(() => _selectedLanguage = val);
+                      setState(() {
+                        _selectedLanguage = val;
+                        _isAutoDetected = false;
+                      });
                       _saveString('app_language', val);
                     }
                   },

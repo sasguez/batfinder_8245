@@ -111,6 +111,104 @@ class _AccountSectionWidgetState extends State<AccountSectionWidget> {
       if (kDebugMode) print('❌ Edit phone error: $e');
     }
   }
+  Future<void> _editNickname() async {
+    final current = (widget.userData['nickname'] as String?) ?? '';
+    final controller = TextEditingController(text: current);
+    String? errorMsg;
+    bool isChecking = false;
+
+    final newNickname = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Editar Nickname'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: 'Nickname',
+                  prefixText: '@',
+                  hintText: 'usuario_123',
+                  errorText: errorMsg,
+                ),
+                onChanged: (_) => setDialogState(() => errorMsg = null),
+              ),
+              SizedBox(height: 1.h),
+              Text(
+                'Solo letras, numeros y _ · 3-20 caracteres',
+                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (isChecking) ...[
+                SizedBox(height: 1.h),
+                const LinearProgressIndicator(),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: isChecking
+                  ? null
+                  : () async {
+                      final value = controller.text.trim().toLowerCase();
+                      if (value.length < 3 || value.length > 20) {
+                        setDialogState(
+                          () => errorMsg = 'Entre 3 y 20 caracteres',
+                        );
+                        return;
+                      }
+                      if (!RegExp(r'^[a-z0-9_]+$').hasMatch(value)) {
+                        setDialogState(
+                          () => errorMsg = 'Solo letras, numeros y _',
+                        );
+                        return;
+                      }
+                      setDialogState(() => isChecking = true);
+                      final available =
+                          await SupabaseService.checkNicknameAvailable(value);
+                      if (!ctx.mounted) return;
+                      if (!available) {
+                        setDialogState(() {
+                          errorMsg = 'Este nickname ya esta en uso';
+                          isChecking = false;
+                        });
+                        return;
+                      }
+                      Navigator.pop(ctx, value);
+                    },
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (newNickname == null || !mounted) return;
+    try {
+      await SupabaseService.updateUserProfile(
+        userId: SupabaseService.currentUserId!,
+        updates: {'nickname': newNickname},
+      );
+      widget.onProfileUpdated();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('Error al actualizar nickname'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
+      if (kDebugMode) print('Edit nickname error: $e');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -142,6 +240,16 @@ class _AccountSectionWidgetState extends State<AccountSectionWidget> {
             label: 'Nombre',
             value: widget.userData['name'] as String? ?? '',
             onTap: _editName,
+          ),
+          Divider(height: 1, thickness: 1, indent: 16.w),
+          _buildInfoTile(
+            context: context,
+            icon: 'alternate_email',
+            label: 'Nickname',
+            value: (widget.userData['nickname'] as String?)?.isNotEmpty == true
+                ? '@${widget.userData['nickname']}'
+                : 'Sin nickname',
+            onTap: _editNickname,
           ),
           Divider(height: 1, thickness: 1, indent: 16.w),
           _buildInfoTile(

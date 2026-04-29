@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,7 +25,7 @@ class AlertDashboardState extends State<AlertDashboard> {
     '/alert-dashboard',
     '/interactive-safety-map',
     '/incident-reporting',
-    '/community-safety-chat',
+    // '/community-safety-chat', // CHAT DESHABILITADO
     '/user-profile-settings',
   ];
 

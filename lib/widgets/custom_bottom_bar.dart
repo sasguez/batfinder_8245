@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Custom bottom navigation bar for Colombian Safety App
@@ -71,12 +71,14 @@ class CustomBottomBar extends StatelessWidget {
             tooltip: 'Report Incident - Document safety concerns',
           ),
           // Chat/Messages - Community Safety Chat (Communication hub)
+          /*  CHAT DESHABILITADO
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline, size: 24),
             activeIcon: Icon(Icons.chat_bubble, size: 24),
             label: 'Chat',
             tooltip: 'Safety Chat - Community communication',
           ),
+          */
           // Profile/Settings - User Profile Settings (Account management)
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline, size: 24),

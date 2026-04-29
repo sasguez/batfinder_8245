@@ -14,9 +14,9 @@ class SupabaseService {
         anonKey: 'sb_publishable_SPV0MouzJPWD3iPAsM3kww_W_WdgVlt',
       );
       _client = Supabase.instance.client;
-      if (kDebugMode) print('✅ Supabase initialized successfully');
+      if (kDebugMode) print('âœ… Supabase initialized successfully');
     } catch (e) {
-      if (kDebugMode) print('❌ Supabase initialization error: $e');
+      if (kDebugMode) print('âŒ Supabase initialization error: $e');
       rethrow;
     }
   }
@@ -63,7 +63,7 @@ class SupabaseService {
       await ensureUserProfile();
       return response;
     } catch (e) {
-      if (kDebugMode) print('❌ Sign in error: $e');
+      if (kDebugMode) print('âŒ Sign in error: $e');
       rethrow;
     }
   }
@@ -76,7 +76,7 @@ class SupabaseService {
       );
       await ensureUserProfile();
     } catch (e) {
-      if (kDebugMode) print('❌ Google Sign-In error: $e');
+      if (kDebugMode) print('âŒ Google Sign-In error: $e');
       rethrow;
     }
   }
@@ -89,7 +89,7 @@ class SupabaseService {
       );
       await ensureUserProfile();
     } catch (e) {
-      if (kDebugMode) print('❌ Facebook Sign-In error: $e');
+      if (kDebugMode) print('âŒ Facebook Sign-In error: $e');
       rethrow;
     }
   }
@@ -108,7 +108,7 @@ class SupabaseService {
       await ensureUserProfile();
       return response;
     } catch (e) {
-      if (kDebugMode) print('❌ Sign up error: $e');
+      if (kDebugMode) print('âŒ Sign up error: $e');
       rethrow;
     }
   }
@@ -117,7 +117,7 @@ class SupabaseService {
     try {
       await client.auth.signOut();
     } catch (e) {
-      if (kDebugMode) print('❌ Sign out error: $e');
+      if (kDebugMode) print('âŒ Sign out error: $e');
       rethrow;
     }
   }
@@ -137,7 +137,7 @@ class SupabaseService {
           .eq('id', userId)
           .maybeSingle();
     } catch (e) {
-      if (kDebugMode) print('❌ Get user profile error: $e');
+      if (kDebugMode) print('âŒ Get user profile error: $e');
       return null;
     }
   }
@@ -149,7 +149,7 @@ class SupabaseService {
     try {
       await client.from('users').update(updates).eq('id', userId);
     } catch (e) {
-      if (kDebugMode) print('❌ Update profile error: $e');
+      if (kDebugMode) print('âŒ Update profile error: $e');
       rethrow;
     }
   }
@@ -166,7 +166,7 @@ class SupabaseService {
       await updateUserProfile(userId: userId, updates: {'avatar_url': url});
       return url;
     } catch (e) {
-      if (kDebugMode) print('❌ Upload avatar error: $e');
+      if (kDebugMode) print('âŒ Upload avatar error: $e');
       return null;
     }
   }
@@ -202,7 +202,7 @@ class SupabaseService {
           .order('created_at', ascending: false)
           .limit(limit);
     } catch (e) {
-      if (kDebugMode) print('❌ Get incidents error: $e');
+      if (kDebugMode) print('âŒ Get incidents error: $e');
       return [];
     }
   }
@@ -226,7 +226,7 @@ class SupabaseService {
         )
       ''').eq('id', incidentId).maybeSingle();
     } catch (e) {
-      if (kDebugMode) print('❌ Get incident details error: $e');
+      if (kDebugMode) print('âŒ Get incident details error: $e');
       return null;
     }
   }
@@ -264,7 +264,7 @@ class SupabaseService {
 
       return response['id'] as String;
     } catch (e) {
-      if (kDebugMode) print('❌ Create incident error: $e');
+      if (kDebugMode) print('âŒ Create incident error: $e');
       rethrow;
     }
   }
@@ -279,7 +279,7 @@ class SupabaseService {
           .update({'status': status})
           .eq('id', incidentId);
     } catch (e) {
-      if (kDebugMode) print('❌ Update incident status error: $e');
+      if (kDebugMode) print('âŒ Update incident status error: $e');
       rethrow;
     }
   }
@@ -298,7 +298,7 @@ class SupabaseService {
         'comment': comment,
       });
     } catch (e) {
-      if (kDebugMode) print('❌ Add comment error: $e');
+      if (kDebugMode) print('âŒ Add comment error: $e');
       rethrow;
     }
   }
@@ -306,6 +306,7 @@ class SupabaseService {
   // =============================
   // CHAT
   // =============================
+  /*
   static Future<List<Map<String, dynamic>>> getAllChatRooms() async {
     try {
       return await client
@@ -313,7 +314,7 @@ class SupabaseService {
           .select()
           .limit(50);
     } catch (e) {
-      if (kDebugMode) print('❌ Get all chat rooms error: $e');
+      if (kDebugMode) print('âŒ Get all chat rooms error: $e');
       return [];
     }
   }
@@ -335,7 +336,7 @@ class SupabaseService {
           .eq('user_id', userId)
           .order('joined_at', ascending: false);
     } catch (e) {
-      if (kDebugMode) print('❌ Get chat rooms error: $e');
+      if (kDebugMode) print('âŒ Get chat rooms error: $e');
       return [];
     }
   }
@@ -353,7 +354,7 @@ class SupabaseService {
           .eq('room_id', roomId)
           .order('created_at', ascending: true);
     } catch (e) {
-      if (kDebugMode) print('❌ Get messages error: $e');
+      if (kDebugMode) print('âŒ Get messages error: $e');
       return [];
     }
   }
@@ -372,10 +373,11 @@ class SupabaseService {
         'message': message,
       });
     } catch (e) {
-      if (kDebugMode) print('❌ Send message error: $e');
+      if (kDebugMode) print('âŒ Send message error: $e');
       rethrow;
     }
   }
+  */
 
   // =============================
   // REALTIME
@@ -394,6 +396,7 @@ class SupabaseService {
         .subscribe();
   }
 
+  /*
   static RealtimeChannel subscribeToChatMessages(
     String roomId,
     Function(Map<String, dynamic>) onMessage,
@@ -413,6 +416,7 @@ class SupabaseService {
         )
         .subscribe();
   }
+  */
 
   // =============================
   // STATISTICS
@@ -434,7 +438,7 @@ class SupabaseService {
             'verified_alerts': 0,
           };
     } catch (e) {
-      if (kDebugMode) print('❌ Get statistics error: $e');
+      if (kDebugMode) print('âŒ Get statistics error: $e');
       return {
         'total_alerts': 0,
         'active_alerts': 0,
@@ -457,7 +461,7 @@ class SupabaseService {
           .order('timestamp', ascending: false)
           .limit(limit);
     } catch (e) {
-      if (kDebugMode) print('❌ Get recent activity error: $e');
+      if (kDebugMode) print('âŒ Get recent activity error: $e');
       return [];
     }
   }
@@ -476,7 +480,7 @@ class SupabaseService {
           .eq('user_id', userId)
           .order('created_at', ascending: true);
     } catch (e) {
-      if (kDebugMode) print('❌ Get emergency contacts error: $e');
+      if (kDebugMode) print('âŒ Get emergency contacts error: $e');
       return [];
     }
   }
@@ -501,7 +505,7 @@ class SupabaseService {
           .select()
           .single();
     } catch (e) {
-      if (kDebugMode) print('❌ Add emergency contact error: $e');
+      if (kDebugMode) print('âŒ Add emergency contact error: $e');
       rethrow;
     }
   }
@@ -510,7 +514,7 @@ class SupabaseService {
     try {
       await client.from('emergency_contacts').delete().eq('id', contactId);
     } catch (e) {
-      if (kDebugMode) print('❌ Delete emergency contact error: $e');
+      if (kDebugMode) print('âŒ Delete emergency contact error: $e');
       rethrow;
     }
   }
@@ -527,7 +531,7 @@ class SupabaseService {
           .order('priority', ascending: true)
           .order('created_at', ascending: true);
     } catch (e) {
-      if (kDebugMode) print('❌ getEmergencyContactsFull error: $e');
+      if (kDebugMode) print('âŒ getEmergencyContactsFull error: $e');
       return [];
     }
   }
@@ -550,6 +554,7 @@ class SupabaseService {
             'user_id':        userId,
             'name':           name,
             'phone_wa':       phoneWa,
+            'phone':          phoneWa ?? phoneSms ?? '',
             'phone_sms':      phoneSms,
             'has_app':        hasApp,
             'fcm_token':      fcmToken,
@@ -559,7 +564,7 @@ class SupabaseService {
           .select()
           .single();
     } catch (e) {
-      if (kDebugMode) print('❌ addEmergencyContactFull error: $e');
+      if (kDebugMode) print('âŒ addEmergencyContactFull error: $e');
       rethrow;
     }
   }
@@ -574,7 +579,7 @@ class SupabaseService {
           .update(updates)
           .eq('id', contactId);
     } catch (e) {
-      if (kDebugMode) print('❌ updateEmergencyContactFull error: $e');
+      if (kDebugMode) print('âŒ updateEmergencyContactFull error: $e');
       rethrow;
     }
   }
@@ -586,9 +591,9 @@ class SupabaseService {
     if (userId == null) return;
     try {
       await client.from('users').update({'fcm_token': token}).eq('id', userId);
-      if (kDebugMode) print('✅ FCM token registrado');
+      if (kDebugMode) print('âœ… FCM token registrado');
     } catch (e) {
-      if (kDebugMode) print('❌ registerFCMToken error: $e');
+      if (kDebugMode) print('âŒ registerFCMToken error: $e');
     }
   }
 
@@ -602,12 +607,59 @@ class SupabaseService {
           .maybeSingle();
       return result?['fcm_token'] as String?;
     } catch (e) {
-      if (kDebugMode) print('❌ lookupContactFCMToken error: $e');
+      if (kDebugMode) print('âŒ lookupContactFCMToken error: $e');
       return null;
     }
   }
 
-  // Verifica si el usuario tiene al menos un contacto con canal de notificación válido
+  // Verifica si un nickname esta disponible para el usuario actual
+  static Future<bool> checkNicknameAvailable(String nickname) async {
+    try {
+      final result = await client
+          .from('users')
+          .select('id')
+          .eq('nickname', nickname.toLowerCase().trim())
+          .neq('id', currentUserId ?? '')
+          .maybeSingle();
+      return result == null;
+    } catch (e) {
+      if (kDebugMode) print('checkNicknameAvailable error: $e');
+      return false;
+    }
+  }
+
+  // Busca un usuario por @nickname, email o telefono para obtener su FCM token
+  static Future<Map<String, dynamic>?> lookupUserForFCM(String query) async {
+    final trimmed = query.trim();
+    try {
+      if (trimmed.startsWith('@')) {
+        final nickname = trimmed.substring(1).toLowerCase();
+        return await client
+            .from('users')
+            .select('full_name, nickname, fcm_token')
+            .eq('nickname', nickname)
+            .maybeSingle();
+      } else if (trimmed.contains('@')) {
+        return await client
+            .from('users')
+            .select('full_name, nickname, fcm_token')
+            .eq('email', trimmed.toLowerCase())
+            .maybeSingle();
+      } else {
+        final phone = trimmed.replaceAll(' ', '').replaceAll('-', '');
+        return await client
+            .from('users')
+            .select('full_name, nickname, fcm_token')
+            .eq('phone', phone)
+            .maybeSingle();
+      }
+    } catch (e) {
+      if (kDebugMode) print('lookupUserForFCM error: $e');
+      return null;
+    }
+  }
+
+  // Verifica si el usuario tiene al menos un contacto con canal de notificaciÃ³n vÃ¡lido
   static Future<bool> hasValidEmergencyContacts() async {
     final userId = currentUserId;
     if (userId == null) return false;
@@ -622,7 +674,7 @@ class SupabaseService {
           (c['has_app'] == true &&
               (c['fcm_token'] as String?)?.isNotEmpty == true));
     } catch (e) {
-      if (kDebugMode) print('❌ hasValidEmergencyContacts error: $e');
+      if (kDebugMode) print('âŒ hasValidEmergencyContacts error: $e');
       return false;
     }
   }
@@ -651,7 +703,7 @@ class SupabaseService {
 
       return response['id'] as String;
     } catch (e) {
-      if (kDebugMode) print('❌ Create emergency alert error: $e');
+      if (kDebugMode) print('âŒ Create emergency alert error: $e');
       return null;
     }
   }
@@ -663,7 +715,7 @@ class SupabaseService {
         'resolved_at': DateTime.now().toIso8601String(),
       }).eq('id', alertId);
     } catch (e) {
-      if (kDebugMode) print('❌ Resolve emergency alert error: $e');
+      if (kDebugMode) print('âŒ Resolve emergency alert error: $e');
       rethrow;
     }
   }
@@ -675,7 +727,7 @@ class SupabaseService {
         'resolved_at': DateTime.now().toIso8601String(),
       }).eq('id', alertId);
     } catch (e) {
-      if (kDebugMode) print('❌ Cancel emergency alert error: $e');
+      if (kDebugMode) print('âŒ Cancel emergency alert error: $e');
       rethrow;
     }
   }
@@ -690,7 +742,7 @@ class SupabaseService {
         email: email,
       );
     } catch (e) {
-      if (kDebugMode) print('❌ Resend verification email error: $e');
+      if (kDebugMode) print('âŒ Resend verification email error: $e');
       rethrow;
     }
   }

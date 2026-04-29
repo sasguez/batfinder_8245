@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../presentation/splash_screen/splash_screen.dart';
 import '../presentation/onboarding_flow/onboarding_flow.dart';
@@ -11,7 +11,7 @@ import '../presentation/create_edit_incident_screen/create_edit_incident_screen.
 import '../presentation/emergency_panic_mode/emergency_panic_mode.dart';
 import '../presentation/interactive_safety_map/interactive_safety_map.dart';
 import '../presentation/user_profile_settings/user_profile_settings.dart';
-import '../presentation/community_safety_chat/community_safety_chat.dart';
+// import '../presentation/community_safety_chat/community_safety_chat.dart'; // CHAT DESHABILITADO
 import '../presentation/realtime_dashboard/realtime_dashboard_screen.dart';
 import '../presentation/enhanced_map_screen/enhanced_map_screen.dart';
 import '../presentation/profile_edit_screen/profile_edit_screen.dart';
@@ -30,7 +30,7 @@ class AppRoutes {
   static const String emergencyPanicMode = '/emergency-panic-mode';
   static const String interactiveSafetyMap = '/interactive-safety-map';
   static const String userProfileSettings = '/user-profile-settings';
-  static const String communitySafetyChat = '/community-safety-chat';
+  // static const String communitySafetyChat = '/community-safety-chat'; // CHAT DESHABILITADO
   static const String realtimeDashboard = '/realtime-dashboard';
   static const String enhancedMapScreen = '/enhanced-map';
   static const String profileEditScreen = '/profile-edit';
@@ -50,7 +50,7 @@ class AppRoutes {
       emergencyPanicMode: (context) => const EmergencyPanicMode(),
       interactiveSafetyMap: (context) => const InteractiveSafetyMap(),
       userProfileSettings: (context) => const UserProfileSettings(),
-      communitySafetyChat: (context) => const CommunitySafetyChat(),
+      // communitySafetyChat: (context) => const CommunitySafetyChat(), // CHAT DESHABILITADO
       realtimeDashboard: (context) => const RealtimeDashboardScreen(),
       enhancedMapScreen: (context) => const EnhancedMapScreen(),
       profileEditScreen: (context) => const ProfileEditScreen(),
