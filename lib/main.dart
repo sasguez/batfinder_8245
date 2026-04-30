@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
@@ -47,30 +46,71 @@ Future<void> _initFirebase() async {
     );
     await FirebaseMessaging.instance.requestPermission();
 
-    // Registrar token propio si el usuario ya tiene sesión activa
-    if (SupabaseService.currentUser != null) {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null) await SupabaseService.registerFCMToken(token);
-      FirebaseMessaging.instance.onTokenRefresh.listen(SupabaseService.registerFCMToken);
-    }
+    // Registrar token cada vez que haya sesión activa: inicio de sesión, restauración, o login nuevo
+    SupabaseService.authStateChanges.listen((state) async {
+      if (state.session?.user == null) return;
+      try {
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null) await SupabaseService.registerFCMToken(token);
+      } catch (e) {
+        if (kDebugMode) print('⚠️ FCM token on auth change: $e');
+      }
+    });
+    // Actualizar token en Supabase si FCM lo rota (siempre activo)
+    FirebaseMessaging.instance.onTokenRefresh.listen(SupabaseService.registerFCMToken);
 
     FirebaseMessaging.onMessage.listen((message) async {
       await SoundService().playAlertSound();
       await VibrationService().vibrateAlert();
       if (message.data['type'] == 'PANIC_ALERT') {
-        Fluttertoast.showToast(
-          msg: '🚨 ${message.notification?.title ?? "Alerta de pánico recibida"}',
-          toastLength: Toast.LENGTH_LONG,
-          gravity: ToastGravity.TOP,
-          backgroundColor: Colors.red.shade700,
-          textColor: Colors.white,
+        // Obtener contexto después del gap asíncrono para evitar uso obsoleto
+        final ctx = navigatorKey.currentContext;
+        if (ctx == null || !ctx.mounted) return;
+        final theme = Theme.of(ctx);
+        showDialog(
+          context: ctx,
+          barrierDismissible: false,
+          builder: (dialogCtx) => AlertDialog(
+            title: Row(children: [
+              Icon(Icons.warning_amber_rounded, color: theme.colorScheme.error),
+              const SizedBox(width: 8),
+              Text('Alerta de pánico',
+                  style: TextStyle(color: theme.colorScheme.error)),
+            ]),
+            content: Text(
+              message.notification?.body ?? 'Un contacto necesita ayuda urgente',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Ignorar'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.error,
+                  foregroundColor: theme.colorScheme.onError,
+                ),
+                onPressed: () {
+                  Navigator.pop(dialogCtx);
+                  navigatorKey.currentState?.pushNamed(
+                    AppRoutes.panicAlertReceived,
+                    arguments: Map<String, dynamic>.from(message.data),
+                  );
+                },
+                child: const Text('Ver alerta'),
+              ),
+            ],
+          ),
         );
       }
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       if (message.data['type'] == 'PANIC_ALERT') {
-        navigatorKey.currentState?.pushNamed(AppRoutes.interactiveSafetyMap);
+        navigatorKey.currentState?.pushNamed(
+          AppRoutes.panicAlertReceived,
+          arguments: Map<String, dynamic>.from(message.data),
+        );
       }
     });
   } catch (e) {

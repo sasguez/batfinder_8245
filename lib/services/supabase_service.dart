@@ -542,6 +542,7 @@ class SupabaseService {
     String? phoneSms,
     bool hasApp = false,
     String? fcmToken,
+    String? contactUserId,
     int priority = 1,
     bool whatsappOptin = false,
   }) async {
@@ -551,15 +552,16 @@ class SupabaseService {
       return await client
           .from('emergency_contacts')
           .insert({
-            'user_id':        userId,
-            'name':           name,
-            'phone_wa':       phoneWa,
-            'phone':          phoneWa ?? phoneSms ?? '',
-            'phone_sms':      phoneSms,
-            'has_app':        hasApp,
-            'fcm_token':      fcmToken,
-            'priority':       priority,
-            'whatsapp_optin': whatsappOptin,
+            'user_id':         userId,
+            'name':            name,
+            'phone_wa':        phoneWa,
+            'phone':           phoneWa ?? phoneSms ?? '',
+            'phone_sms':       phoneSms,
+            'has_app':         hasApp,
+            'fcm_token':       fcmToken,
+            'contact_user_id': contactUserId,
+            'priority':        priority,
+            'whatsapp_optin':  whatsappOptin,
           })
           .select()
           .single();
@@ -636,20 +638,20 @@ class SupabaseService {
         final nickname = trimmed.substring(1).toLowerCase();
         return await client
             .from('users')
-            .select('full_name, nickname, fcm_token')
+            .select('id, full_name, nickname, fcm_token')
             .eq('nickname', nickname)
             .maybeSingle();
       } else if (trimmed.contains('@')) {
         return await client
             .from('users')
-            .select('full_name, nickname, fcm_token')
+            .select('id, full_name, nickname, fcm_token')
             .eq('email', trimmed.toLowerCase())
             .maybeSingle();
       } else {
         final phone = trimmed.replaceAll(' ', '').replaceAll('-', '');
         return await client
             .from('users')
-            .select('full_name, nickname, fcm_token')
+            .select('id, full_name, nickname, fcm_token')
             .eq('phone', phone)
             .maybeSingle();
       }
@@ -729,6 +731,36 @@ class SupabaseService {
     } catch (e) {
       if (kDebugMode) print('âŒ Cancel emergency alert error: $e');
       rethrow;
+    }
+  }
+
+  // Obtiene el perfil de quien emitió una alerta de pánico para mostrarlo al receptor
+  static Future<Map<String, dynamic>?> getSenderProfile(String userId) async {
+    try {
+      return await client
+          .from('users')
+          .select('full_name, nickname, avatar_url, phone')
+          .eq('id', userId)
+          .maybeSingle();
+    } catch (e) {
+      if (kDebugMode) print('❌ getSenderProfile error: $e');
+      return null;
+    }
+  }
+
+  // Obtiene la última posición conocida de un evento de pánico como fallback
+  static Future<Map<String, dynamic>?> getLatestPanicLocation(String eventId) async {
+    try {
+      return await client
+          .from('panic_locations')
+          .select('latitude, longitude, accuracy, created_at')
+          .eq('event_id', eventId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+    } catch (e) {
+      if (kDebugMode) print('❌ getLatestPanicLocation error: $e');
+      return null;
     }
   }
 

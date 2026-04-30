@@ -72,11 +72,15 @@ class _UserRegistrationState extends State<UserRegistration> {
         _emailController.text.isEmpty ||
         _phoneController.text.isEmpty ||
         _passwordController.text.isEmpty ||
-        !_termsAccepted) return false;
+        !_termsAccepted) {
+      return false;
+    }
     if (_selectedRole == 'Citizen' && _selectedMunicipality == null) return false;
     if (_selectedRole == 'Authority' && _badgePhotoPath == null) return false;
     if (_selectedRole == 'NGO Representative' &&
-        _organizationController.text.isEmpty) return false;
+        _organizationController.text.isEmpty) {
+      return false;
+    }
     return true;
   }
 

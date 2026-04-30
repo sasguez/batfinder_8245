@@ -41,6 +41,27 @@ serve(async (req) => {
     const mapsUrl  = `https://maps.google.com/?q=${latitude},${longitude}`;
     const address  = await reverseGeocode(latitude, longitude);
 
+    // Refresca los tokens FCM usando la tabla users (el token en emergency_contacts puede ser obsoleto)
+    const appContactUserIds = contacts
+      .filter((c: Record<string, unknown>) => c.has_app && c.contact_user_id)
+      .map((c: Record<string, unknown>) => c.contact_user_id as string);
+
+    if (appContactUserIds.length > 0) {
+      const { data: freshUsers } = await sb
+        .from("users")
+        .select("id, fcm_token")
+        .in("id", appContactUserIds);
+
+      if (freshUsers) {
+        const tokenMap: Record<string, string | null> = {};
+        for (const u of freshUsers) tokenMap[u.id] = u.fcm_token ?? null;
+        for (const c of contacts as Record<string, unknown>[]) {
+          const uid = c.contact_user_id as string | undefined;
+          if (uid && tokenMap[uid] !== undefined) c.fcm_token = tokenMap[uid];
+        }
+      }
+    }
+
     console.log(`[orchestrator] contacts found: ${contacts.length}`);
     console.log(`[orchestrator] contacts detail:`, JSON.stringify(
       contacts.map((c: Record<string, unknown>) => ({
@@ -187,7 +208,7 @@ async function sendFCMv1(
             },
             android: {
               priority: "high",
-              notification: { sound: "default" },
+              notification: { channel_id: "batfinder_alerts" },
             },
           },
         }),

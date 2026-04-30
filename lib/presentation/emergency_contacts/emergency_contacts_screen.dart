@@ -94,13 +94,14 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
           if (contact == null) {
             try {
               final added = await SupabaseService.addEmergencyContactFull(
-                name:          data['name']! as String,
-                phoneWa:       data['phone_wa'] as String?,
-                phoneSms:      data['phone_sms'] as String?,
-                hasApp:        data['has_app'] as bool,
-                fcmToken:      data['fcm_token'] as String?,
-                priority:      data['priority'] as int,
-                whatsappOptin: data['whatsapp_optin'] as bool,
+                name:           data['name']! as String,
+                phoneWa:        data['phone_wa'] as String?,
+                phoneSms:       data['phone_sms'] as String?,
+                hasApp:         data['has_app'] as bool,
+                fcmToken:       data['fcm_token'] as String?,
+                contactUserId:  data['contact_user_id'] as String?,
+                priority:       data['priority'] as int,
+                whatsappOptin:  data['whatsapp_optin'] as bool,
               );
               if (mounted) setState(() => _contacts.add(added));
             } catch (e) {
@@ -115,13 +116,14 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               await SupabaseService.updateEmergencyContactFull(
                 contactId: contact['id'] as String,
                 updates: {
-                  'name':           data['name'],
-                  'phone_wa':       data['phone_wa'],
-                  'phone_sms':      data['phone_sms'],
-                  'has_app':        data['has_app'],
-                  'fcm_token':      data['fcm_token'],
-                  'priority':       data['priority'],
-                  'whatsapp_optin': data['whatsapp_optin'],
+                  'name':             data['name'],
+                  'phone_wa':         data['phone_wa'],
+                  'phone_sms':        data['phone_sms'],
+                  'has_app':          data['has_app'],
+                  'fcm_token':        data['fcm_token'],
+                  'contact_user_id':  data['contact_user_id'],
+                  'priority':         data['priority'],
+                  'whatsapp_optin':   data['whatsapp_optin'],
                 },
               );
               if (mounted) {
@@ -438,14 +440,16 @@ class _ContactFormState extends State<_ContactForm> {
   String _initialWaNumber   = '';
   String _initialSmsNumber  = '';
 
-  bool    _hasApp          = false;
-  bool    _waOptin         = false;
-  int     _priority        = 1;
-  bool    _saving          = false;
+  bool    _hasApp             = false;
+  bool    _waOptin            = false;
+  int     _priority           = 1;
+  bool    _saving             = false;
   String? _fetchedFcmToken;
-  bool    _isLookingUp     = false;
-  bool    _lookupAttempted = false;
+  String? _fetchedContactUserId;
+  bool    _isLookingUp        = false;
+  bool    _lookupAttempted    = false;
   String? _foundUserName;
+  bool    _userFoundNoToken   = false;
 
   @override
   void initState() {
@@ -536,11 +540,15 @@ class _ContactFormState extends State<_ContactForm> {
     final result = await SupabaseService.lookupUserForFCM(query);
     if (!mounted) return;
     setState(() {
-      _fetchedFcmToken = result?['fcm_token'] as String?;
+      _fetchedFcmToken      = result?['fcm_token']  as String?;
+      _fetchedContactUserId = result?['id']          as String?;
+      _userFoundNoToken     = result != null && _fetchedFcmToken == null;
       if (result != null) {
         final name     = result['full_name'] as String? ?? '';
         final nickname = result['nickname']  as String?;
         _foundUserName = nickname != null ? '$name (@$nickname)' : name;
+      } else {
+        _foundUserName = null;
       }
       _isLookingUp = false;
     });
@@ -551,13 +559,14 @@ class _ContactFormState extends State<_ContactForm> {
     _formKey.currentState!.save();
     setState(() => _saving = true);
     await widget.onSaved({
-      'name':           _nameCtrl.text.trim(),
-      'phone_wa':       _phoneWaComplete.isEmpty ? null : _phoneWaComplete,
-      'phone_sms':      _phoneSmsComplete.isEmpty ? null : _phoneSmsComplete,
-      'has_app':        _hasApp,
-      'fcm_token':      _hasApp ? _fetchedFcmToken : null,
-      'whatsapp_optin': _waOptin,
-      'priority':       _priority,
+      'name':             _nameCtrl.text.trim(),
+      'phone_wa':         _phoneWaComplete.isEmpty ? null : _phoneWaComplete,
+      'phone_sms':        _phoneSmsComplete.isEmpty ? null : _phoneSmsComplete,
+      'has_app':          _hasApp,
+      'fcm_token':        _hasApp ? _fetchedFcmToken : null,
+      'contact_user_id':  _hasApp ? _fetchedContactUserId : null,
+      'whatsapp_optin':   _waOptin,
+      'priority':         _priority,
     });
     if (mounted) Navigator.pop(context);
   }
@@ -652,10 +661,12 @@ class _ContactFormState extends State<_ContactForm> {
                 onChanged: (v) => setState(() {
                   _hasApp = v;
                   if (!v) {
-                    _fetchedFcmToken = null;
-                    _foundUserName   = null;
+                    _fetchedFcmToken      = null;
+                    _fetchedContactUserId = null;
+                    _foundUserName        = null;
+                    _userFoundNoToken     = false;
                     _searchCtrl.clear();
-                    _lookupAttempted = false;
+                    _lookupAttempted      = false;
                   }
                 }),
               ),
@@ -702,10 +713,26 @@ class _ContactFormState extends State<_ContactForm> {
                       Expanded(
                         child: Text(
                           _foundUserName != null
-                              ? 'Push activo - $_foundUserName'
+                              ? 'Push activo — $_foundUserName'
                               : 'Notificacion push habilitada',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.secondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else if (_userFoundNoToken)
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          color: theme.colorScheme.tertiary, size: 16),
+                      SizedBox(width: 1.w),
+                      Expanded(
+                        child: Text(
+                          'Usuario encontrado pero aún no tiene push activo.\nPídele que abra BatFinder para sincronizar.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.tertiary,
                           ),
                         ),
                       ),

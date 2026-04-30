@@ -17,6 +17,7 @@ import '../presentation/enhanced_map_screen/enhanced_map_screen.dart';
 import '../presentation/profile_edit_screen/profile_edit_screen.dart';
 import '../presentation/emergency_contacts/emergency_contacts_screen.dart';
 import '../presentation/incident_reporting/widgets/offline_queue_widget.dart';
+import '../presentation/panic_alert_received/panic_alert_received_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -36,6 +37,7 @@ class AppRoutes {
   static const String profileEditScreen = '/profile-edit';
   static const String offlineQueue = '/offline-queue';
   static const String emergencyContacts = '/emergency-contacts';
+  static const String panicAlertReceived = '/panic-alert-received';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -56,6 +58,10 @@ class AppRoutes {
       profileEditScreen: (context) => const ProfileEditScreen(),
       offlineQueue:        (context) => const OfflineQueueWidget(),
       emergencyContacts:   (context) => const EmergencyContactsScreen(),
+      panicAlertReceived: (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+        return PanicAlertReceivedScreen(data: args ?? {});
+      },
     };
   }
 }
